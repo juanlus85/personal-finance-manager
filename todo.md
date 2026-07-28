@@ -1,0 +1,41 @@
+# Project TODO
+
+- [x] Definir las reglas de cálculo para balances confirmados, balances con ingresos posibles y deudas informativas.
+- [x] Diseñar un modelo de datos MySQL portable y exportable para entidades financieras, movimientos y configuraciones.
+- [x] Preparar una estrategia de autenticación Google OAuth restringida exclusivamente a `juanlu85@gmail.com`.
+- [x] Construir una configuración de producción autoalojable para el subdominio `finanzas.blancoguzman.es`.
+- [x] Implementar la gestión de monedas, tipos de cambio y cuentas de dinero en EUR y USD.
+- [x] Implementar altas, edición, archivo y consulta de préstamos con ficha de características, interés y plan de amortización.
+- [x] Excluir automáticamente del panel mensual los préstamos vencidos según su fecha de finalización.
+- [x] Implementar altas, edición, archivo y consulta de financiaciones con concepto, importe y fecha de finalización.
+- [x] Excluir automáticamente del panel mensual las financiaciones vencidas según su fecha de finalización.
+- [x] Implementar recibos habituales recurrentes, con generación mensual automática en los cálculos.
+- [x] Implementar recibos extraordinarios puntuales.
+- [x] Implementar gastos de tarjeta de actualización rápida y categorización.
+- [x] Implementar ingresos fijos, extraordinarios y posibles con indicador de certeza.
+- [x] Mostrar los ingresos posibles en un balance separado y claramente diferenciado del balance confirmado.
+- [x] Implementar deudas a favor y deudas en contra como información independiente del balance principal.
+- [x] Construir un panel mensual con desglose de ingresos, gastos, flujo neto y saldos.
+- [x] Crear gráficos de evolución del balance y distribución de gastos e ingresos por categoría.
+- [x] Diseñar una interfaz elegante, sofisticada, accesible y responsive para escritorio y móvil.
+- [x] Incorporar importación manual y exportación de datos en formatos reutilizables.
+- [x] Añadir una indicación de versión y fecha de compilación en la configuración de la aplicación.
+- [x] Crear pruebas unitarias para reglas de cálculo, seguridad y procedimientos principales.
+- [x] Verificar visualmente la interfaz y los flujos esenciales en los tamaños de pantalla relevantes.
+- [x] Documentar y validar los flujos interactivos de altas, edición, eliminación, importación y exportación en escritorio y móvil.
+- [ ] Preparar un repositorio privado en GitHub y documentación de instalación, actualización con `git pull` y configuración de dominio en VPS.
+- [ ] Configurar las credenciales reales de Google OAuth y validar el inicio de sesión en el dominio de producción.
+- [x] Añadir una visualización de distribución de ingresos por categoría en la pantalla de informes.
+- [x] Implementar importación manual validada de datos de finanzas en formato JSON portable.
+- [x] Crear pruebas para los procedimientos financieros principales, incluido el resumen mensual, tendencias y exportación.
+- [x] Añadir pruebas del flujo completo de importación JSON con relaciones y restauración válida.
+- [x] Ampliar las pruebas de resúmenes y tendencias con datos financieros no vacíos y vencimientos.
+- [x] Crear pruebas de los procedimientos CRUD principales de préstamos, financiaciones, cuentas, movimientos, deudas y tipos de cambio.
+- [x] Añadir pruebas de lectura, actualización y borrado para préstamos, financiaciones, cuentas, movimientos, deudas y tipos de cambio.
+- [x] Añadir pruebas de aislamiento por usuario y actualización de registros financieros existentes.
+- [x] Ampliar pruebas de aislamiento por usuario para listados y actualizaciones de las entidades financieras principales.
+- [x] Documentar y comprobar el archivado o liquidación no destructiva de préstamos, financiaciones, cuentas y deudas, en lugar de eliminar su histórico.
+- [x] Añadir una gestión explícita de eliminación segura para tipos de cambio y movimientos cuando sea necesaria.
+- [x] Ampliar las pruebas de aislamiento por usuario para préstamos, financiaciones y tipos de cambio en sus listados y actualizaciones.
+- [x] Añadir confirmación explícita al eliminar movimientos desde la interfaz y verificar su procedimiento seguro.
+- [x] Añadir aserciones de aislamiento específicas por entidad para préstamos, financiaciones y tipos de cambio.
