@@ -23,7 +23,7 @@
 - [x] Crear pruebas unitarias para reglas de cálculo, seguridad y procedimientos principales.
 - [x] Verificar visualmente la interfaz y los flujos esenciales en los tamaños de pantalla relevantes.
 - [x] Documentar y validar los flujos interactivos de altas, edición, eliminación, importación y exportación en escritorio y móvil.
-- [ ] Preparar un repositorio privado en GitHub y documentación de instalación, actualización con `git pull` y configuración de dominio en VPS.
+- [x] Preparar un repositorio privado en GitHub y documentación de instalación, actualización con `git pull` y configuración de dominio en VPS.
 - [ ] Configurar las credenciales reales de Google OAuth y validar el inicio de sesión en el dominio de producción.
 - [x] Añadir una visualización de distribución de ingresos por categoría en la pantalla de informes.
 - [x] Implementar importación manual validada de datos de finanzas en formato JSON portable.
