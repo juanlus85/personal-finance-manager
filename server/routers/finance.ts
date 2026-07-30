@@ -23,16 +23,19 @@ import {
   loanFeatures,
   loanInstallments,
   loans,
+  monthlyConceptSettlements,
   recurringTransactions,
   transactions,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import {
   calculateMonthlyBalances,
+  calculateMonthlySettlement,
   convertToEur,
   generateFrenchAmortizationSchedule,
   isActiveDuringMonth,
   monthBounds,
+  roundMoney,
 } from "../finance/calculations";
 import { protectedProcedure, router } from "../_core/trpc";
 
@@ -205,6 +208,20 @@ const transactionInput = z.object({
   notes: nullableText(4_000),
 });
 
+const settlementInput = z.object({
+  month: monthSchema,
+  conceptId: z.string().regex(/^(recurring|loan|financing|extra_income|possible_income|extra_bill|card_expense|manual_income|manual_expense)-\d+$/),
+  source: z.enum(["recurring", "loan", "financing", "extra_income", "possible_income", "extra_bill", "card_expense", "manual_income", "manual_expense"]),
+  description: z.string().trim().min(1).max(220),
+  direction: directionSchema,
+  certainty: z.enum(["confirmed", "possible"]),
+  currency: currencySchema,
+  amount: moneySchema,
+  amountEur: z.coerce.number().finite().min(0).max(999_999_999).nullable(),
+  accountId: z.number().int().positive(),
+  settledOn: dateSchema,
+});
+
 const debtInput = z.object({
   id: z.number().int().positive().optional(),
   counterparty: z.string().trim().min(1).max(160),
@@ -234,6 +251,7 @@ const portableBackupSchema = z.object({
     financings: z.array(z.object({ concept: z.string().min(1).max(180), provider: importedNullableText(160), currency: currencySchema, monthlyAmount: importedDecimalSchema.refine(value => value > 0), totalAmount: importedDecimalSchema.nullable().optional().default(null), paymentDay: z.number().int().min(1).max(31), startDate: dateSchema, endDate: dateSchema, status: z.enum(["active", "archived"]), notes: importedNullableText(4_000) })).max(5_000).default([]),
     recurringTransactions: z.array(z.object({ categoryId: importedIdSchema.nullable().optional().default(null), accountId: importedIdSchema.nullable().optional().default(null), name: z.string().min(1).max(180), direction: directionSchema, kind: z.enum(["fixed_income", "recurring_bill"]), certainty: z.enum(["confirmed", "possible"]), currency: currencySchema, amount: importedDecimalSchema.refine(value => value > 0), dayOfMonth: z.number().int().min(1).max(31), startDate: dateSchema, endDate: dateSchema.nullable().optional().default(null), notes: importedNullableText(4_000), isActive: z.boolean() })).max(10_000).default([]),
     transactions: z.array(z.object({ categoryId: importedIdSchema.nullable().optional().default(null), accountId: importedIdSchema.nullable().optional().default(null), description: z.string().min(1).max(220), direction: directionSchema, kind: z.enum(["extra_income", "possible_income", "extra_bill", "card_expense", "manual_income", "manual_expense"]), certainty: z.enum(["confirmed", "possible"]), currency: currencySchema, amount: importedDecimalSchema.refine(value => value > 0), exchangeRateToEur: importedDecimalSchema.nullable().optional().default(null), effectiveDate: dateSchema, notes: importedNullableText(4_000) })).max(20_000).default([]),
+    monthlyConceptSettlements: z.array(z.object({ month: monthSchema, conceptId: z.string().min(3).max(96), source: z.enum(["recurring", "loan", "financing", "extra_income", "possible_income", "extra_bill", "card_expense", "manual_income", "manual_expense"]), description: z.string().min(1).max(220), direction: directionSchema, certainty: z.enum(["confirmed", "possible"]), currency: currencySchema, amount: importedDecimalSchema.refine(value => value > 0), amountEur: importedDecimalSchema.nullable().optional().default(null), accountId: importedIdSchema.nullable().optional().default(null), status: z.literal("settled"), settledOn: dateSchema })).max(20_000).default([]),
     debts: z.array(z.object({ counterparty: z.string().min(1).max(160), direction: z.enum(["in_favor", "against"]), currency: currencySchema, amount: importedDecimalSchema.refine(value => value > 0), originatedOn: dateSchema, dueDate: dateSchema.nullable().optional().default(null), status: z.enum(["open", "settled", "cancelled"]), notes: importedNullableText(4_000) })).max(10_000).default([]),
   }),
 });
@@ -574,6 +592,70 @@ export const financeRouter = router({
     }),
   }),
 
+  settlements: router({
+    settle: protectedProcedure.input(settlementInput).mutation(async ({ ctx, input }) => {
+      const { start, end } = monthBounds(input.month);
+      if (input.settledOn < start || input.settledOn > end) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "La fecha de liquidación debe pertenecer al mes seleccionado." });
+      }
+
+      const db = await requireDatabase();
+      const targetAccount = await db
+        .select({ id: accounts.id, currency: accounts.currency })
+        .from(accounts)
+        .where(and(eq(accounts.id, input.accountId), eq(accounts.userId, ctx.user.id), eq(accounts.isActive, true)))
+        .limit(1);
+
+      if (targetAccount.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "La cuenta seleccionada no está disponible." });
+      }
+      if (targetAccount[0].currency !== input.currency) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "La cuenta debe tener la misma moneda que el concepto liquidado." });
+      }
+
+      const values = {
+        userId: ctx.user.id,
+        month: input.month,
+        conceptId: input.conceptId,
+        source: input.source,
+        description: input.description,
+        direction: input.direction,
+        certainty: input.certainty,
+        currency: input.currency,
+        amount: input.amount.toFixed(2),
+        amountEur: input.amountEur === null ? null : input.amountEur.toFixed(2),
+        accountId: input.accountId,
+        status: "settled" as const,
+        settledOn: input.settledOn,
+      };
+
+      await db.insert(monthlyConceptSettlements).values(values).onDuplicateKeyUpdate({
+        set: {
+          source: values.source,
+          description: values.description,
+          direction: values.direction,
+          certainty: values.certainty,
+          currency: values.currency,
+          amount: values.amount,
+          amountEur: values.amountEur,
+          accountId: values.accountId,
+          status: values.status,
+          settledOn: values.settledOn,
+        },
+      });
+      return { success: true };
+    }),
+    undo: protectedProcedure.input(z.object({ month: monthSchema, conceptId: z.string().min(3).max(96) })).mutation(async ({ ctx, input }) => {
+      const db = await requireDatabase();
+      await db.delete(monthlyConceptSettlements).where(and(
+        eq(monthlyConceptSettlements.userId, ctx.user.id),
+        eq(monthlyConceptSettlements.month, input.month),
+        eq(monthlyConceptSettlements.conceptId, input.conceptId),
+      ));
+      return { success: true };
+    }),
+  }),
+
   debts: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       const db = await requireDatabase();
@@ -604,9 +686,10 @@ export const financeRouter = router({
     const db = await requireDatabase();
     const { start, end } = monthBounds(input.month);
 
-    const [recurringRows, loanRows, financingRows, transactionRows, rateRows, accountRows, snapshotRows, debtRows] = await Promise.all([
+    const [recurringRows, loanRows, financingRows, transactionRows, rateRows, accountRows, snapshotRows, debtRows, monthSettlementRows, accountSettlementRows] = await Promise.all([
       db.select({
         id: recurringTransactions.id,
+        accountId: recurringTransactions.accountId,
         name: recurringTransactions.name,
         direction: recurringTransactions.direction,
         certainty: recurringTransactions.certainty,
@@ -625,6 +708,7 @@ export const financeRouter = router({
       db.select().from(financings).where(and(eq(financings.userId, ctx.user.id), eq(financings.status, "active"), lte(financings.startDate, end), gte(financings.endDate, start))),
       db.select({
         id: transactions.id,
+        accountId: transactions.accountId,
         description: transactions.description,
         direction: transactions.direction,
         certainty: transactions.certainty,
@@ -637,8 +721,16 @@ export const financeRouter = router({
       }).from(transactions).leftJoin(categories, eq(transactions.categoryId, categories.id)).where(and(eq(transactions.userId, ctx.user.id), gte(transactions.effectiveDate, start), lte(transactions.effectiveDate, end))),
       db.select({ fromCurrency: exchangeRates.fromCurrency, rate: exchangeRates.rate, effectiveOn: exchangeRates.effectiveOn }).from(exchangeRates).where(and(eq(exchangeRates.userId, ctx.user.id), lte(exchangeRates.effectiveOn, end))).orderBy(desc(exchangeRates.effectiveOn)),
       db.select().from(accounts).where(and(eq(accounts.userId, ctx.user.id), eq(accounts.isActive, true))).orderBy(asc(accounts.name)),
-      db.select().from(accountBalanceSnapshots).orderBy(desc(accountBalanceSnapshots.recordedOn)),
+      db.select({
+        id: accountBalanceSnapshots.id,
+        accountId: accountBalanceSnapshots.accountId,
+        balance: accountBalanceSnapshots.balance,
+        recordedOn: accountBalanceSnapshots.recordedOn,
+        note: accountBalanceSnapshots.note,
+      }).from(accountBalanceSnapshots).innerJoin(accounts, eq(accountBalanceSnapshots.accountId, accounts.id)).where(eq(accounts.userId, ctx.user.id)).orderBy(desc(accountBalanceSnapshots.recordedOn)),
       db.select().from(debts).where(and(eq(debts.userId, ctx.user.id), eq(debts.status, "open"))).orderBy(desc(debts.originatedOn)),
+      db.select().from(monthlyConceptSettlements).where(and(eq(monthlyConceptSettlements.userId, ctx.user.id), eq(monthlyConceptSettlements.month, input.month))),
+      db.select().from(monthlyConceptSettlements).where(and(eq(monthlyConceptSettlements.userId, ctx.user.id), eq(monthlyConceptSettlements.status, "settled"))),
     ]);
 
     const relevantSnapshots = snapshotRows.filter(snapshot => dateKey(snapshot.recordedOn)! <= end);
@@ -646,6 +738,7 @@ export const financeRouter = router({
     for (const snapshot of relevantSnapshots) {
       if (!latestSnapshotByAccount.has(snapshot.accountId)) latestSnapshotByAccount.set(snapshot.accountId, snapshot);
     }
+    const settlementByConcept = new Map(monthSettlementRows.map(settlement => [settlement.conceptId, settlement]));
 
     const lines = [
       ...recurringRows.filter(row => isActiveDuringMonth(dateKey(row.startDate)!, dateKey(row.endDate), input.month)).map(row => {
@@ -653,6 +746,7 @@ export const financeRouter = router({
         return {
           id: `recurring-${row.id}`,
           source: "recurring",
+          defaultAccountId: row.accountId ?? null,
           description: row.name,
           direction: row.direction,
           certainty: row.certainty,
@@ -667,6 +761,7 @@ export const financeRouter = router({
         return {
           id: `loan-${row.id}`,
           source: "loan",
+          defaultAccountId: null,
           description: row.name,
           direction: "expense" as const,
           certainty: "confirmed" as const,
@@ -681,6 +776,7 @@ export const financeRouter = router({
         return {
           id: `financing-${row.id}`,
           source: "financing",
+          defaultAccountId: null,
           description: row.concept,
           direction: "expense" as const,
           certainty: "confirmed" as const,
@@ -695,6 +791,7 @@ export const financeRouter = router({
         return {
           id: `transaction-${row.id}`,
           source: row.kind,
+          defaultAccountId: row.accountId ?? null,
           description: row.description,
           direction: row.direction,
           certainty: row.certainty,
@@ -706,11 +803,32 @@ export const financeRouter = router({
       }),
     ];
 
+    const reconciledLines = lines.map(line => {
+      const settlement = settlementByConcept.get(line.id);
+      return {
+        ...line,
+        settlementStatus: settlement?.status === "settled" ? "settled" as const : "pending" as const,
+        settlementId: settlement?.id ?? null,
+        settlementAccountId: settlement?.accountId ?? null,
+        settledOn: dateKey(settlement?.settledOn),
+      };
+    });
+
     const balances = calculateMonthlyBalances(lines);
+    const settlement = calculateMonthlySettlement(reconciledLines);
     const accountLiquidity = accountRows.map(account => {
       const snapshot = latestSnapshotByAccount.get(account.id);
-      const amount = snapshot ? numberValue(snapshot.balance) : null;
-      const rate = findRateToEur(rateRows, account.currency, snapshot?.recordedOn ?? end);
+      const snapshotDate = dateKey(snapshot?.recordedOn);
+      const postSnapshotSettlements = accountSettlementRows.filter(entry => {
+        const settledOn = dateKey(entry.settledOn);
+        return entry.accountId === account.id && settledOn !== null && settledOn <= end && (!snapshotDate || settledOn > snapshotDate);
+      });
+      const totalSettlementChange = postSnapshotSettlements.reduce((total, entry) => total + (entry.direction === "income" ? numberValue(entry.amount) : -numberValue(entry.amount)), 0);
+      const currentMonthChange = accountSettlementRows
+        .filter(entry => entry.accountId === account.id && dateKey(entry.settledOn)?.startsWith(input.month))
+        .reduce((total, entry) => total + (entry.direction === "income" ? numberValue(entry.amount) : -numberValue(entry.amount)), 0);
+      const amount = snapshot ? roundMoney(numberValue(snapshot.balance) + totalSettlementChange) : null;
+      const rate = findRateToEur(rateRows, account.currency, end);
       return {
         id: account.id,
         name: account.name,
@@ -720,8 +838,11 @@ export const financeRouter = router({
         balanceEur: amount === null ? null : convertToEur(amount, account.currency, rate),
         recordedOn: dateKey(snapshot?.recordedOn),
         included: account.includeInLiquidity,
+        openingBalance: snapshot ? numberValue(snapshot.balance) : null,
+        settlementChange: roundMoney(currentMonthChange),
       };
     });
+    const availableLiquidity = roundMoney(accountLiquidity.filter(account => account.included).reduce((total, account) => total + Number(account.balanceEur ?? 0), 0));
 
     const debtSummary = debtRows.map(debt => {
       const amount = numberValue(debt.amount);
@@ -740,7 +861,9 @@ export const financeRouter = router({
       month: input.month,
       bounds: { start, end },
       balances,
-      lines,
+      settlement,
+      availableLiquidity,
+      lines: reconciledLines,
       expenseBreakdown: groupedByLabel(lines, "expense"),
       incomeBreakdown: groupedByLabel(lines, "income"),
       accountLiquidity,
@@ -819,6 +942,7 @@ export const financeRouter = router({
       financingRows,
       recurringRows,
       transactionRows,
+      settlementRows,
       debtRows,
     ] = await Promise.all([
       db.select().from(categories).where(eq(categories.userId, ctx.user.id)).orderBy(asc(categories.name)),
@@ -854,6 +978,7 @@ export const financeRouter = router({
       db.select().from(financings).where(eq(financings.userId, ctx.user.id)).orderBy(asc(financings.concept)),
       db.select().from(recurringTransactions).where(eq(recurringTransactions.userId, ctx.user.id)).orderBy(asc(recurringTransactions.name)),
       db.select().from(transactions).where(eq(transactions.userId, ctx.user.id)).orderBy(desc(transactions.effectiveDate)),
+      db.select().from(monthlyConceptSettlements).where(eq(monthlyConceptSettlements.userId, ctx.user.id)).orderBy(desc(monthlyConceptSettlements.settledOn)),
       db.select().from(debts).where(eq(debts.userId, ctx.user.id)).orderBy(desc(debts.originatedOn)),
     ]);
 
@@ -873,6 +998,7 @@ export const financeRouter = router({
         financings: financingRows,
         recurringTransactions: recurringRows,
         transactions: transactionRows,
+        monthlyConceptSettlements: settlementRows,
         debts: debtRows,
       },
     };
@@ -953,10 +1079,13 @@ export const financeRouter = router({
       for (const transaction of backup.transactions) {
         await tx.insert(transactions).values({ userId: ctx.user.id, categoryId: transaction.categoryId ? categoryIdMap.get(transaction.categoryId) ?? null : null, accountId: transaction.accountId ? accountIdMap.get(transaction.accountId) ?? null : null, description: transaction.description, direction: transaction.direction, kind: transaction.kind, certainty: transaction.kind === "possible_income" ? "possible" : transaction.direction === "expense" ? "confirmed" : transaction.certainty, currency: transaction.currency, amount: transaction.amount.toFixed(2), exchangeRateToEur: transaction.currency === "USD" && transaction.exchangeRateToEur ? transaction.exchangeRateToEur.toFixed(8) : null, effectiveDate: transaction.effectiveDate, notes: transaction.notes });
       }
+      for (const settlement of backup.monthlyConceptSettlements) {
+        await tx.insert(monthlyConceptSettlements).values({ userId: ctx.user.id, month: settlement.month, conceptId: settlement.conceptId, source: settlement.source, description: settlement.description, direction: settlement.direction, certainty: settlement.certainty, currency: settlement.currency, amount: settlement.amount.toFixed(2), amountEur: settlement.amountEur === null ? null : settlement.amountEur.toFixed(2), accountId: settlement.accountId ? accountIdMap.get(settlement.accountId) ?? null : null, status: "settled", settledOn: settlement.settledOn }).onDuplicateKeyUpdate({ set: { source: settlement.source, description: settlement.description, direction: settlement.direction, certainty: settlement.certainty, currency: settlement.currency, amount: settlement.amount.toFixed(2), amountEur: settlement.amountEur === null ? null : settlement.amountEur.toFixed(2), accountId: settlement.accountId ? accountIdMap.get(settlement.accountId) ?? null : null, status: "settled", settledOn: settlement.settledOn } });
+      }
       for (const debt of backup.debts) {
         await tx.insert(debts).values({ userId: ctx.user.id, counterparty: debt.counterparty, direction: debt.direction, currency: debt.currency, amount: debt.amount.toFixed(2), originatedOn: debt.originatedOn, dueDate: debt.dueDate, status: debt.status, notes: debt.notes });
       }
-      return { success: true, imported: { categories: createdCategories, accounts: createdAccounts, loans: backup.loans.length, financings: backup.financings.length, recurringTransactions: backup.recurringTransactions.length, transactions: backup.transactions.length, debts: backup.debts.length } };
+      return { success: true, imported: { categories: createdCategories, accounts: createdAccounts, loans: backup.loans.length, financings: backup.financings.length, recurringTransactions: backup.recurringTransactions.length, transactions: backup.transactions.length, settlements: backup.monthlyConceptSettlements.length, debts: backup.debts.length } };
     });
   }),
 });

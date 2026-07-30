@@ -16,6 +16,7 @@ import {
 export const currencyValues = ["EUR", "USD"] as const;
 export const directionValues = ["income", "expense"] as const;
 export const certaintyValues = ["confirmed", "possible"] as const;
+export const settlementStatusValues = ["pending", "settled"] as const;
 
 /** Core identity table. Google OpenID Connect `sub` values are stored in `openId`. */
 export const users = mysqlTable("users", {
@@ -235,6 +236,38 @@ export const transactions = mysqlTable(
   ],
 );
 
+/**
+ * Per-month reconciliation records. A source concept remains planned and is
+ * regenerated in future months; this table only records whether its instance
+ * in a specific month has already been collected or paid.
+ */
+export const monthlyConceptSettlements = mysqlTable(
+  "monthlyConceptSettlements",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    month: varchar("month", { length: 7 }).notNull(),
+    conceptId: varchar("conceptId", { length: 96 }).notNull(),
+    source: varchar("source", { length: 48 }).notNull(),
+    description: varchar("description", { length: 220 }).notNull(),
+    direction: mysqlEnum("direction", directionValues).notNull(),
+    certainty: mysqlEnum("certainty", certaintyValues).notNull().default("confirmed"),
+    currency: mysqlEnum("currency", currencyValues).notNull().default("EUR"),
+    amount: decimal("amount", { precision: 16, scale: 2 }).notNull(),
+    amountEur: decimal("amountEur", { precision: 16, scale: 2 }),
+    accountId: int("accountId").references(() => accounts.id, { onDelete: "set null" }),
+    status: mysqlEnum("status", settlementStatusValues).notNull().default("pending"),
+    settledOn: date("settledOn", { mode: "string" }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("monthly_settlement_user_month_concept_unique").on(table.userId, table.month, table.conceptId),
+    index("monthly_settlement_user_month_status_idx").on(table.userId, table.month, table.status),
+    index("monthly_settlement_account_date_idx").on(table.accountId, table.settledOn),
+  ],
+);
+
 export const debts = mysqlTable(
   "debts",
   {
@@ -275,4 +308,5 @@ export type LoanInstallment = typeof loanInstallments.$inferSelect;
 export type Financing = typeof financings.$inferSelect;
 export type RecurringTransaction = typeof recurringTransactions.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
+export type MonthlyConceptSettlement = typeof monthlyConceptSettlements.$inferSelect;
 export type Debt = typeof debts.$inferSelect;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateMonthlyBalances,
+  calculateMonthlySettlement,
   generateFrenchAmortizationSchedule,
   isActiveDuringMonth,
   monthBounds,
@@ -50,5 +51,31 @@ describe("financial calculations", () => {
       balanceWithPossibleIncome: 550,
       linesWithoutConversion: 1,
     });
+  });
+
+  it("separates settled cash movements from next actions without carrying them to a new month", () => {
+    const currentMonth = calculateMonthlySettlement([
+      { direction: "income", certainty: "confirmed", amountEur: 2000, settlementStatus: "settled" },
+      { direction: "expense", certainty: "confirmed", amountEur: 650, settlementStatus: "pending" },
+      { direction: "income", certainty: "possible", amountEur: 300, settlementStatus: "pending" },
+      { direction: "expense", certainty: "confirmed", amountEur: 50, settlementStatus: "settled" },
+    ]);
+
+    expect(currentMonth).toMatchObject({
+      settledIncome: 2000,
+      settledExpenses: 50,
+      settledNet: 1950,
+      pendingConfirmedIncome: 0,
+      pendingPossibleIncome: 300,
+      pendingExpenses: 650,
+      pendingConcepts: 2,
+      settledConcepts: 2,
+    });
+
+    const followingMonth = calculateMonthlySettlement([
+      { direction: "income", certainty: "confirmed", amountEur: 2000, settlementStatus: "pending" },
+      { direction: "expense", certainty: "confirmed", amountEur: 650, settlementStatus: "pending" },
+    ]);
+    expect(followingMonth).toMatchObject({ settledConcepts: 0, pendingConcepts: 2, pendingConfirmedIncome: 2000, pendingExpenses: 650 });
   });
 });

@@ -25,6 +25,17 @@
 - [x] Documentar y validar los flujos interactivos de altas, edición, eliminación, importación y exportación en escritorio y móvil.
 - [x] Preparar un repositorio privado en GitHub y documentación de instalación, actualización con `git pull` y configuración de dominio en VPS.
 - [ ] Configurar las credenciales reales de Google OAuth y validar el inicio de sesión en el dominio de producción.
+- [ ] Ejecutar una prueba controlada de extremo a extremo con registros temporales autorizados y eliminarlos al finalizar.
+- [x] Diseñar el estado mensual de cada concepto como pendiente, cobrado o pagado sin perder su planificación original.
+- [x] Crear una pantalla de liquidación del mes en curso con acciones rápidas para cobrar ingresos y pagar gastos.
+- [x] Permitir elegir la cuenta o efectivo afectado y actualizar su saldo disponible al liquidar un concepto.
+- [x] Mostrar el disponible real del mes junto al importe pendiente de cobro y de pago.
+- [x] Regenerar automáticamente los conceptos recurrentes como pendientes al abrir el siguiente mes.
+- [x] Añadir pruebas unitarias de liquidación, actualización de saldos y transición entre meses.
+- [x] Verificar mediante el router que una liquidación modifica la disponibilidad de la cuenta correcta desde su saldo inicial.
+- [x] Verificar mediante el router que un concepto recurrente liquidado vuelve a estar pendiente en el mes siguiente.
+- [x] Cubrir en pruebas el efecto acumulado de cobros y pagos liquidados sobre el saldo disponible.
+- [x] Corregir el límite de fecha del diálogo de liquidación para respetar la duración real de cada mes.
 - [x] Añadir una visualización de distribución de ingresos por categoría en la pantalla de informes.
 - [x] Implementar importación manual validada de datos de finanzas en formato JSON portable.
 - [x] Crear pruebas para los procedimientos financieros principales, incluido el resumen mensual, tendencias y exportación.

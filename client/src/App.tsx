@@ -10,6 +10,7 @@ import LoansPage from "./pages/Loans";
 import MonthlyPage from "./pages/Monthly";
 import MovementsPage from "./pages/Movements";
 import ReportsPage from "./pages/Reports";
+import SettlementPage from "./pages/Settlement";
 import SettingsPage from "./pages/Settings";
 
 function Router() {
@@ -18,6 +19,7 @@ function Router() {
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/mensual"} component={MonthlyPage} />
+      <Route path={"/liquidacion"} component={SettlementPage} />
       <Route path={"/movimientos"} component={MovementsPage} />
       <Route path={"/prestamos"} component={LoansPage} />
       <Route path={"/cuentas"} component={AccountsPage} />

@@ -15,6 +15,13 @@
       "when": 1785264474899,
       "tag": "0001_broken_human_torch",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1785420452965,
+      "tag": "0002_dark_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }

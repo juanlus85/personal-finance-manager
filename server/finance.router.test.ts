@@ -145,6 +145,7 @@ describe("finance router", () => {
     expect(exported.version).toBe(1);
     expect(exported.baseCurrency).toBe("EUR");
     expect(exported.data.transactions).toEqual([]);
+    expect(exported.data.monthlyConceptSettlements).toEqual([]);
     expect(exported.data.loans).toEqual([]);
   });
 
@@ -345,5 +346,72 @@ describe("finance router", () => {
     expect(containsPrimitive(financingsListScope, 7)).toBe(true);
     expect(containsPrimitive(financingsUpdateScope, 7)).toBe(true);
     expect(containsPrimitive(accountsListScope, 7)).toBe(true);
+  });
+
+  it("records and reverses a monthly settlement only for the authenticated user and a matching account currency", async () => {
+    const { database, inserted, deleted } = createWritableDatabase([[{ id: 44, currency: "EUR" }]]);
+    vi.mocked(getDb).mockResolvedValue(database as never);
+    const caller = appRouter.createCaller(createContext());
+
+    await caller.finance.settlements.settle({ month: "2026-07", conceptId: "recurring-8", source: "recurring", description: "Nómina", direction: "income", certainty: "confirmed", currency: "EUR", amount: 2000, amountEur: 2000, accountId: 44, settledOn: "2026-07-28" });
+    await caller.finance.settlements.undo({ month: "2026-07", conceptId: "recurring-8" });
+
+    expect(inserted).toEqual(expect.arrayContaining([expect.objectContaining({ userId: 7, month: "2026-07", conceptId: "recurring-8", accountId: 44, status: "settled" })]));
+    expect(deleted).toHaveLength(1);
+  });
+
+  it("rejects a settlement outside its selected month before changing any data", async () => {
+    const { database, inserted } = createWritableDatabase();
+    vi.mocked(getDb).mockResolvedValue(database as never);
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(caller.finance.settlements.settle({ month: "2026-07", conceptId: "recurring-8", source: "recurring", description: "Nómina", direction: "income", certainty: "confirmed", currency: "EUR", amount: 2000, amountEur: 2000, accountId: 44, settledOn: "2026-08-01" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(inserted).toEqual([]);
+  });
+
+  it("updates the available balance of the settled account from its opening snapshot with collected and paid concepts", async () => {
+    const database = createSequencedDatabase([
+      [], [], [],
+      [
+        { id: 1, accountId: 1, description: "Cobro temporal", direction: "income", certainty: "confirmed", kind: "extra_income", currency: "EUR", amount: "100.00", exchangeRateToEur: null, effectiveDate: "2026-07-10", category: "Ingresos" },
+        { id: 2, accountId: 1, description: "Pago temporal", direction: "expense", certainty: "confirmed", kind: "card_expense", currency: "EUR", amount: "30.00", exchangeRateToEur: null, effectiveDate: "2026-07-11", category: "Gastos" },
+      ],
+      [],
+      [{ id: 1, name: "Banco", type: "bank", currency: "EUR", includeInLiquidity: true }],
+      [{ id: 9, accountId: 1, balance: "1000.00", recordedOn: "2026-07-01", note: null }],
+      [],
+      [
+        { id: 21, conceptId: "transaction-1", status: "settled", accountId: 1, settledOn: "2026-07-10" },
+        { id: 22, conceptId: "transaction-2", status: "settled", accountId: 1, settledOn: "2026-07-11" },
+      ],
+      [
+        { accountId: 1, direction: "income", amount: "100.00", settledOn: "2026-07-10" },
+        { accountId: 1, direction: "expense", amount: "30.00", settledOn: "2026-07-11" },
+      ],
+    ]);
+    vi.mocked(getDb).mockResolvedValue(database as never);
+    const summary = await appRouter.createCaller(createContext()).finance.monthlySummary({ month: "2026-07" });
+
+    expect(summary.availableLiquidity).toBe(1070);
+    expect(summary.accountLiquidity[0]).toMatchObject({ id: 1, openingBalance: 1000, balance: 1070, settlementChange: 70 });
+    expect(summary.settlement).toMatchObject({ settledIncome: 100, settledExpenses: 30, settledNet: 70, settledConcepts: 2 });
+    expect(summary.lines.every(line => line.settlementStatus === "settled")).toBe(true);
+  });
+
+  it("shows a recurring concept as pending again when the following month has no settlement record", async () => {
+    const recurringLine = { id: 1, accountId: null, name: "Nómina", direction: "income", certainty: "confirmed", currency: "EUR", amount: "1000.00", category: "Trabajo", startDate: "2026-01-01", endDate: null };
+    const database = createSequencedDatabase([
+      [recurringLine], [], [], [], [], [], [], [],
+      [{ id: 31, conceptId: "recurring-1", status: "settled", accountId: null, settledOn: "2026-07-05" }], [],
+      [recurringLine], [], [], [], [], [], [], [], [], [],
+    ]);
+    vi.mocked(getDb).mockResolvedValue(database as never);
+    const caller = appRouter.createCaller(createContext());
+    const july = await caller.finance.monthlySummary({ month: "2026-07" });
+    const august = await caller.finance.monthlySummary({ month: "2026-08" });
+
+    expect(july.lines[0]).toMatchObject({ id: "recurring-1", settlementStatus: "settled" });
+    expect(august.lines[0]).toMatchObject({ id: "recurring-1", settlementStatus: "pending" });
+    expect(august.settlement).toMatchObject({ settledConcepts: 0, pendingConcepts: 1, pendingConfirmedIncome: 1000 });
   });
 });

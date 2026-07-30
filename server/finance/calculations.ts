@@ -1,5 +1,6 @@
 export type Currency = "EUR" | "USD";
 export type BalanceCertainty = "confirmed" | "possible";
+export type SettlementStatus = "pending" | "settled";
 
 export type AmortizationInput = {
   principal: number;
@@ -31,6 +32,23 @@ export type MonthlyBalanceSummary = {
   expenses: number;
   confirmedBalance: number;
   balanceWithPossibleIncome: number;
+  linesWithoutConversion: number;
+};
+
+export type SettlementBalanceLine = BalanceLine & {
+  settlementStatus: SettlementStatus;
+};
+
+export type MonthlySettlementSummary = {
+  pendingConfirmedIncome: number;
+  pendingPossibleIncome: number;
+  pendingExpenses: number;
+  settledIncome: number;
+  settledExpenses: number;
+  settledNet: number;
+  pendingNet: number;
+  pendingConcepts: number;
+  settledConcepts: number;
   linesWithoutConversion: number;
 };
 
@@ -147,6 +165,54 @@ export function calculateMonthlyBalances(lines: BalanceLine[]): MonthlyBalanceSu
     expenses: roundMoney(expenses),
     confirmedBalance,
     balanceWithPossibleIncome: roundMoney(confirmedBalance + possibleIncome),
+    linesWithoutConversion,
+  };
+}
+
+/**
+ * Separates month planning from real cash movement. A settled possible income
+ * affects liquidity because it was actually collected, while it remains
+ * visually distinguishable from a pending possible income in the plan.
+ */
+export function calculateMonthlySettlement(lines: SettlementBalanceLine[]): MonthlySettlementSummary {
+  let pendingConfirmedIncome = 0;
+  let pendingPossibleIncome = 0;
+  let pendingExpenses = 0;
+  let settledIncome = 0;
+  let settledExpenses = 0;
+  let pendingConcepts = 0;
+  let settledConcepts = 0;
+  let linesWithoutConversion = 0;
+
+  for (const line of lines) {
+    if (line.amountEur === null) {
+      linesWithoutConversion += 1;
+      continue;
+    }
+
+    if (line.settlementStatus === "settled") {
+      settledConcepts += 1;
+      if (line.direction === "income") settledIncome += line.amountEur;
+      else settledExpenses += line.amountEur;
+      continue;
+    }
+
+    pendingConcepts += 1;
+    if (line.direction === "expense") pendingExpenses += line.amountEur;
+    else if (line.certainty === "possible") pendingPossibleIncome += line.amountEur;
+    else pendingConfirmedIncome += line.amountEur;
+  }
+
+  return {
+    pendingConfirmedIncome: roundMoney(pendingConfirmedIncome),
+    pendingPossibleIncome: roundMoney(pendingPossibleIncome),
+    pendingExpenses: roundMoney(pendingExpenses),
+    settledIncome: roundMoney(settledIncome),
+    settledExpenses: roundMoney(settledExpenses),
+    settledNet: roundMoney(settledIncome - settledExpenses),
+    pendingNet: roundMoney(pendingConfirmedIncome - pendingExpenses),
+    pendingConcepts,
+    settledConcepts,
     linesWithoutConversion,
   };
 }

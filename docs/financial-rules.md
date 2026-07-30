@@ -19,3 +19,16 @@ Un préstamo o financiación se considerará vigente en un mes cuando su períod
 El **balance confirmado** se calcula como ingresos fijos y extraordinarios confirmados menos los gastos activos del período. El **balance incluyendo ingresos posibles** añade exclusivamente los ingresos con estado posible al resultado confirmado. Las deudas y los saldos de cuentas se visualizan en módulos independientes y no alteran ninguno de esos dos resultados.
 
 Los importes se almacenarán mediante decimales exactos, nunca como valores de punto flotante. Las fechas de negocio se interpretarán en la zona horaria de España y los selectores de períodos incluirán dinámicamente los años que contengan datos, el año actual y el siguiente.
+
+## Liquidación del mes y disponibilidad real
+
+La pantalla **Liquidar mes** conserva los conceptos planificados y añade un estado independiente para cada instancia mensual: `pendiente` o `liquidado`. Al cobrar un ingreso o pagar un gasto, se selecciona la cuenta o efectivo en la misma moneda y se registra la fecha efectiva. El concepto deja de aparecer entre las tareas pendientes, queda disponible en el historial del mes y puede deshacerse si fue marcado por error.
+
+| Estado | Efecto en la planificación | Efecto en el saldo disponible |
+|---|---|---|
+| Pendiente | Continúa visible como cobro o pago pendiente del mes. | No altera el saldo registrado. |
+| Liquidado: ingreso | Se mueve al historial de cobros del mes. | Se suma a la cuenta o efectivo seleccionado. |
+| Liquidado: gasto | Se mueve al historial de pagos del mes. | Se resta de la cuenta o efectivo seleccionado. |
+| Deshacer | El concepto vuelve a pendientes. | Se revierte el efecto de disponibilidad. |
+
+El **disponible en cuentas** se calcula desde el último saldo manual registrado de cada cuenta y aplica después los cobros y pagos liquidados. Si una cuenta aún no tiene saldo inicial, se muestra como pendiente de configurar para evitar inventar una disponibilidad. Cada liquidación pertenece únicamente al mes elegido; al abrir el mes siguiente, los ingresos fijos y recibos habituales vuelven a aparecer como nuevos conceptos pendientes.

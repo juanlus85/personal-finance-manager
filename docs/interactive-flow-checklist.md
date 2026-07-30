@@ -29,3 +29,9 @@ El formulario de cuenta se cerró mediante **Cancelar** y la pantalla volvió al
 En **Configuración** se verificaron los controles de portabilidad, privacidad y conversión USD → EUR. El formulario de tipo de cambio ofrece valor, fecha de aplicación y nota, preservando el tipo registrado para los informes históricos. No se guardó una tasa ficticia de conversión.
 
 El formulario de conversión se cerró mediante **Cancelar** y la configuración permaneció sin cambios.
+
+Durante la prueba autorizada se creó el tipo temporal **1 USD = 0,9150 EUR**, con la etiqueta `Prueba temporal E2E — eliminar`. La lista lo mostró correctamente, actualizó el estado de consolidación y confirmó el guardado. Se eliminará al cerrar la prueba.
+
+La edición del mismo registro cambió correctamente el valor a **1 USD = 0,9170 EUR** y la lista mostró la notificación de actualización. A continuación se eliminará de forma controlada.
+
+La pantalla **Liquidar mes** se verificó visualmente en escritorio y móvil. Muestra con claridad el disponible en cuentas, importes pendientes de cobro y pago, acciones por concepto y el historial de conceptos liquidados; en móvil se reorganiza en una sola columna sin desbordamiento horizontal.
