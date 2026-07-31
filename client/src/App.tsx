@@ -19,6 +19,7 @@ function Router() {
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/mensual"} component={MonthlyPage} />
+      <Route path={"/resumen"} component={MonthlyPage} />
       <Route path={"/liquidacion"} component={SettlementPage} />
       <Route path={"/movimientos"} component={MovementsPage} />
       <Route path={"/prestamos"} component={LoansPage} />

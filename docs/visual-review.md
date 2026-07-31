@@ -16,3 +16,9 @@ La identidad visual queda definida como **“libro mayor privado y sereno”**: 
 ## Revisión móvil
 
 Las rutas de visión general, movimientos, informes y configuración se verificaron a **375 × 812 px**. El contenido comienza desde la parte superior en cada pantalla, las tarjetas se reordenan en una sola columna, los controles de mes conservan una zona táctil legible y no se observó desbordamiento horizontal. Los informes largos mantienen la información esencial sin ocultar las etiquetas de gráficos ni los valores de las tarjetas.
+
+## Previsiones y escenarios financieros
+
+La revisión de escritorio confirma que la pantalla de **Ingresos y gastos** presenta accesos diferenciados para **BBVA**, **Amex**, **Carrefour** y **El Corte Inglés**, junto con los controles de **Ingreso** y **Gasto** posibles. El resumen mensual ahora presenta bloques separados para ingresos confirmados, gastos previstos, ingresos posibles y gastos posibles. La ruta directa `/resumen` muestra correctamente el balance mensual tras añadir su alias. La pantalla de liquidación conserva los paneles de disponible, pendientes y acciones de cobro o pago sin problemas visuales actuales.
+
+La verificación a **375 × 812 px** confirma que los controles de previsión de tarjetas se adaptan de forma apilada, los selectores de periodo se mantienen utilizables y las tarjetas de escenario y liquidación conservan legibilidad sin desbordamiento horizontal visible.

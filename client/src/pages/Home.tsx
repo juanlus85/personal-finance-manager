@@ -158,7 +158,7 @@ function DashboardContent() {
             <MetricCard label="Ingresos confirmados" value={formatMoney(summary?.balances.confirmedIncome)} note="Fijos y extraordinarios ya confirmados" tone="positive" icon={ArrowUpRight} />
             <MetricCard label="Gastos del mes" value={formatMoney(summary?.balances.expenses)} note="Recibos, tarjetas, préstamos y financiaciones" tone="warm" icon={ArrowDownRight} />
             <MetricCard label="Balance confirmado" value={formatMoney(summary?.balances.confirmedBalance)} note="Sin considerar cobros inciertos" tone="neutral" icon={Wallet} />
-            <MetricCard label="Balance con posibles" value={formatMoney(summary?.balances.balanceWithPossibleIncome)} note={`Incluye ${formatMoney(summary?.balances.possibleIncome)} de ingresos posibles`} tone="possible" icon={Sparkles} />
+             <MetricCard label="Balance con posibles" value={formatMoney(summary?.balances.balanceWithPossibleIncome)} note={`+ ${formatMoney(summary?.balances.possibleIncome)} ingresos posibles · − ${formatMoney(summary?.balances.possibleExpenses)} gastos posibles`} tone="possible" icon={Sparkles} />
           </section>
 
           {summary?.balances.linesWithoutConversion ? (

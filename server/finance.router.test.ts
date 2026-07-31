@@ -137,6 +137,23 @@ describe("finance router", () => {
     expect(trend.every(item => item.confirmedBalance === 0 && item.balanceWithPossibleIncome === 0)).toBe(true);
   });
 
+  it("includes a future card forecast in the corresponding month of the reporting trend", async () => {
+    const database = createSequencedDatabase([
+      [], [], [],
+      [{ id: 90, description: "BBVA · pago previsto", direction: "expense", certainty: "confirmed", kind: "card_forecast", currency: "EUR", amount: "420.00", exchangeRateToEur: null, effectiveDate: "2026-08-01" }],
+      [],
+    ]);
+    vi.mocked(getDb).mockResolvedValue(database as never);
+    const caller = appRouter.createCaller(createContext());
+    const trend = await caller.finance.monthlyTrend({ endMonth: "2026-08", count: 3 });
+
+    expect(trend.map(item => ({ month: item.month, expenses: item.expenses, confirmedBalance: item.confirmedBalance }))).toEqual([
+      { month: "2026-06", expenses: 0, confirmedBalance: 0 },
+      { month: "2026-07", expenses: 0, confirmedBalance: 0 },
+      { month: "2026-08", expenses: 420, confirmedBalance: -420 },
+    ]);
+  });
+
   it("exports only the portable finance envelope for the authenticated user", async () => {
     const caller = appRouter.createCaller(createContext());
     const exported = await caller.finance.exportData();
@@ -217,6 +234,7 @@ describe("finance router", () => {
           accounts: [{ id: 1, name: "Banco principal", type: "bank", currency: "EUR", institution: null, includeInLiquidity: true, notes: null, isActive: true }],
           accountBalanceSnapshots: [], exchangeRates: [], loans: [], loanFeatures: [], loanInstallments: [], financings: [], recurringTransactions: [],
           transactions: [{ categoryId: 1, accountId: 1, description: "Ingreso restaurado", direction: "income", kind: "extra_income", certainty: "confirmed", currency: "EUR", amount: 100, exchangeRateToEur: null, effectiveDate: "2026-07-01", notes: null }],
+          monthlyConceptSettlements: [{ month: "2026-07", conceptId: "transaction-99", source: "card_forecast", description: "Amex · pago previsto", direction: "expense", certainty: "confirmed", currency: "EUR", plannedAmount: 180, plannedAmountEur: 180, amount: 175, amountEur: 175, accountId: 1, status: "settled", settledOn: "2026-07-05" }],
           debts: [],
         },
       },
@@ -224,6 +242,7 @@ describe("finance router", () => {
 
     expect(result).toMatchObject({ success: true, imported: { categories: 0, accounts: 0, transactions: 1 } });
     expect(inserted.find(value => value.description === "Ingreso restaurado")).toMatchObject({ categoryId: 55, accountId: 77, userId: 7 });
+    expect(inserted.find(value => value.conceptId === "transaction-99")).toMatchObject({ userId: 7, source: "card_forecast", plannedAmount: "180.00", amount: "175.00", accountId: 77 });
   });
 
   it("writes the core finance entities under the authenticated user", async () => {
@@ -236,6 +255,8 @@ describe("finance router", () => {
     await caller.finance.loans.save({ name: "Préstamo prueba", lender: null, currency: "EUR", originalPrincipal: 1000, currentPrincipal: 900, annualInterestRate: 2, monthlyPayment: 100, paymentDay: 1, startDate: "2026-01-01", endDate: "2026-12-31", amortizationMethod: "manual", status: "active", notes: null, features: [], regenerateSchedule: false });
     await caller.finance.financings.save({ concept: "Financiación prueba", provider: null, currency: "EUR", monthlyAmount: 20, totalAmount: 240, paymentDay: 1, startDate: "2026-01-01", endDate: "2026-12-31", status: "active", notes: null });
     await caller.finance.transactions.save({ description: "Tarjeta prueba", direction: "expense", kind: "card_expense", certainty: "confirmed", currency: "EUR", amount: 40, exchangeRateToEur: null, effectiveDate: "2026-07-10", categoryId: null, accountId: null, notes: null });
+    await caller.finance.transactions.save({ description: "Amex · pago previsto", direction: "expense", kind: "card_forecast", certainty: "confirmed", currency: "EUR", amount: 180, exchangeRateToEur: null, effectiveDate: "2026-08-01", categoryId: null, accountId: null, notes: null });
+    await caller.finance.transactions.save({ description: "Médico posible", direction: "expense", kind: "possible_expense", certainty: "possible", currency: "EUR", amount: 65, exchangeRateToEur: null, effectiveDate: "2026-07-20", categoryId: null, accountId: null, notes: null });
     await caller.finance.debts.save({ counterparty: "Tercero", direction: "in_favor", currency: "EUR", amount: 30, originatedOn: "2026-07-01", dueDate: null, status: "open", notes: null });
 
     expect(inserted).toEqual(expect.arrayContaining([
@@ -244,6 +265,8 @@ describe("finance router", () => {
       expect.objectContaining({ userId: 7, name: "Préstamo prueba" }),
       expect.objectContaining({ userId: 7, concept: "Financiación prueba" }),
       expect.objectContaining({ userId: 7, description: "Tarjeta prueba" }),
+      expect.objectContaining({ userId: 7, description: "Amex · pago previsto", kind: "card_forecast", effectiveDate: "2026-08-01" }),
+      expect.objectContaining({ userId: 7, description: "Médico posible", kind: "possible_expense", certainty: "possible" }),
       expect.objectContaining({ userId: 7, counterparty: "Tercero" }),
     ]));
   });
@@ -353,20 +376,54 @@ describe("finance router", () => {
     vi.mocked(getDb).mockResolvedValue(database as never);
     const caller = appRouter.createCaller(createContext());
 
-    await caller.finance.settlements.settle({ month: "2026-07", conceptId: "recurring-8", source: "recurring", description: "Nómina", direction: "income", certainty: "confirmed", currency: "EUR", amount: 2000, amountEur: 2000, accountId: 44, settledOn: "2026-07-28" });
+    await caller.finance.settlements.settle({ month: "2026-07", conceptId: "recurring-8", source: "recurring", description: "Nómina", direction: "income", certainty: "confirmed", currency: "EUR", plannedAmount: 2000, plannedAmountEur: 2000, amount: 2015, amountEur: 2015, accountId: 44, settledOn: "2026-07-28" });
     await caller.finance.settlements.undo({ month: "2026-07", conceptId: "recurring-8" });
 
-    expect(inserted).toEqual(expect.arrayContaining([expect.objectContaining({ userId: 7, month: "2026-07", conceptId: "recurring-8", accountId: 44, status: "settled" })]));
+    expect(inserted).toEqual(expect.arrayContaining([expect.objectContaining({ userId: 7, month: "2026-07", conceptId: "recurring-8", accountId: 44, plannedAmount: "2000.00", amount: "2015.00", status: "settled" })]));
     expect(deleted).toHaveLength(1);
   });
 
-  it("rejects a settlement outside its selected month before changing any data", async () => {
-    const { database, inserted } = createWritableDatabase();
+  it("allows an immediate settlement outside its planned month and updates the chosen account snapshot", async () => {
+    const { database, inserted } = createWritableDatabase([[{ id: 44, currency: "EUR" }], [], []]);
     vi.mocked(getDb).mockResolvedValue(database as never);
     const caller = appRouter.createCaller(createContext());
 
-    await expect(caller.finance.settlements.settle({ month: "2026-07", conceptId: "recurring-8", source: "recurring", description: "Nómina", direction: "income", certainty: "confirmed", currency: "EUR", amount: 2000, amountEur: 2000, accountId: 44, settledOn: "2026-08-01" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
-    expect(inserted).toEqual([]);
+    await expect(caller.finance.settlements.settle({ month: "2026-07", conceptId: "recurring-8", source: "recurring", description: "Nómina", direction: "income", certainty: "confirmed", currency: "EUR", plannedAmount: 2000, plannedAmountEur: 2000, amount: 2000, amountEur: 2000, accountId: 44, settledOn: "2026-08-01" })).resolves.toEqual({ success: true });
+    expect(inserted).toEqual(expect.arrayContaining([
+      expect.objectContaining({ conceptId: "recurring-8", accountId: 44, status: "settled" }),
+      expect.objectContaining({ accountId: 44, recordedOn: expect.any(String), balance: "2000.00" }),
+    ]));
+  });
+
+  it("deducts a paid concept from the selected account immediately even when its planned month differs", async () => {
+    const { database, inserted } = createWritableDatabase([
+      [{ id: 1, currency: "EUR" }],
+      [],
+      [{ balance: "6301.44" }],
+    ]);
+    vi.mocked(getDb).mockResolvedValue(database as never);
+    const caller = appRouter.createCaller(createContext());
+
+    await caller.finance.settlements.settle({
+      month: "2026-08",
+      conceptId: "transaction-99",
+      source: "card_forecast",
+      description: "Carrefour · pago previsto",
+      direction: "expense",
+      certainty: "confirmed",
+      currency: "EUR",
+      plannedAmount: 833,
+      plannedAmountEur: 833,
+      amount: 833,
+      amountEur: 833,
+      accountId: 1,
+      settledOn: "2026-07-31",
+    });
+
+    expect(inserted).toEqual(expect.arrayContaining([
+      expect.objectContaining({ conceptId: "transaction-99", accountId: 1, amount: "833.00" }),
+      expect.objectContaining({ accountId: 1, balance: "5468.44", note: "Actualizado al liquidar un cobro o pago" }),
+    ]));
   });
 
   it("updates the available balance of the settled account from its opening snapshot with collected and paid concepts", async () => {
@@ -381,20 +438,21 @@ describe("finance router", () => {
       [{ id: 9, accountId: 1, balance: "1000.00", recordedOn: "2026-07-01", note: null }],
       [],
       [
-        { id: 21, conceptId: "transaction-1", status: "settled", accountId: 1, settledOn: "2026-07-10" },
-        { id: 22, conceptId: "transaction-2", status: "settled", accountId: 1, settledOn: "2026-07-11" },
+        { id: 21, conceptId: "transaction-1", status: "settled", accountId: 1, settledOn: "2026-07-10", plannedAmount: "100.00", plannedAmountEur: "100.00", amount: "120.00", amountEur: "120.00" },
+        { id: 22, conceptId: "transaction-2", status: "settled", accountId: 1, settledOn: "2026-07-11", plannedAmount: "30.00", plannedAmountEur: "30.00", amount: "25.00", amountEur: "25.00" },
       ],
       [
-        { accountId: 1, direction: "income", amount: "100.00", settledOn: "2026-07-10" },
-        { accountId: 1, direction: "expense", amount: "30.00", settledOn: "2026-07-11" },
+        { accountId: 1, direction: "income", amount: "120.00", settledOn: "2026-07-10" },
+        { accountId: 1, direction: "expense", amount: "25.00", settledOn: "2026-07-11" },
       ],
     ]);
     vi.mocked(getDb).mockResolvedValue(database as never);
     const summary = await appRouter.createCaller(createContext()).finance.monthlySummary({ month: "2026-07" });
 
-    expect(summary.availableLiquidity).toBe(1070);
-    expect(summary.accountLiquidity[0]).toMatchObject({ id: 1, openingBalance: 1000, balance: 1070, settlementChange: 70 });
-    expect(summary.settlement).toMatchObject({ settledIncome: 100, settledExpenses: 30, settledNet: 70, settledConcepts: 2 });
+    expect(summary.availableLiquidity).toBe(1095);
+    expect(summary.accountLiquidity[0]).toMatchObject({ id: 1, openingBalance: 1000, balance: 1095, settlementChange: 95 });
+    expect(summary.settlement).toMatchObject({ settledIncome: 120, settledExpenses: 25, settledNet: 95, settledVarianceNet: 25, settledConcepts: 2 });
+    expect(summary.lines).toEqual(expect.arrayContaining([expect.objectContaining({ id: "transaction-1", plannedAmount: 100, settledAmount: 120 }), expect.objectContaining({ id: "transaction-2", plannedAmount: 30, settledAmount: 25 })]));
     expect(summary.lines.every(line => line.settlementStatus === "settled")).toBe(true);
   });
 
@@ -413,5 +471,39 @@ describe("finance router", () => {
     expect(july.lines[0]).toMatchObject({ id: "recurring-1", settlementStatus: "settled" });
     expect(august.lines[0]).toMatchObject({ id: "recurring-1", settlementStatus: "pending" });
     expect(august.settlement).toMatchObject({ settledConcepts: 0, pendingConcepts: 1, pendingConfirmedIncome: 1000 });
+  });
+
+  it("includes a card forecast only in its chosen future month and exposes it as a pending expense", async () => {
+    const database = createSequencedDatabase([
+      [], [], [],
+      [{ id: 8, accountId: null, description: "Amex · pago previsto", direction: "expense", certainty: "confirmed", kind: "card_forecast", currency: "EUR", amount: "180.00", exchangeRateToEur: null, effectiveDate: "2026-08-01", category: "Tarjetas" }],
+      [], [], [], [], [], [],
+    ]);
+    vi.mocked(getDb).mockResolvedValue(database as never);
+    const summary = await appRouter.createCaller(createContext()).finance.monthlySummary({ month: "2026-08" });
+
+    expect(summary.balances).toMatchObject({ expenses: 180, confirmedBalance: -180 });
+    expect(summary.lines).toEqual(expect.arrayContaining([expect.objectContaining({ id: "transaction-8", source: "card_forecast", settlementStatus: "pending" })]));
+    expect(summary.settlement).toMatchObject({ pendingExpenses: 180, pendingConcepts: 1 });
+  });
+
+  it("keeps possible expenses and card forecasts in their corresponding months without carrying one-offs forward", async () => {
+    const database = createSequencedDatabase([
+      [], [], [],
+      [{ id: 31, accountId: null, description: "Médico posible", direction: "expense", certainty: "possible", kind: "possible_expense", currency: "EUR", amount: "70.00", exchangeRateToEur: null, effectiveDate: "2026-07-15", category: "Salud" }],
+      [], [], [], [], [], [],
+      [], [], [],
+      [{ id: 32, accountId: null, description: "Carrefour · pago previsto", direction: "expense", certainty: "confirmed", kind: "card_forecast", currency: "EUR", amount: "240.00", exchangeRateToEur: null, effectiveDate: "2026-08-01", category: "Tarjetas" }],
+      [], [], [], [], [], [],
+    ]);
+    vi.mocked(getDb).mockResolvedValue(database as never);
+    const caller = appRouter.createCaller(createContext());
+    const july = await caller.finance.monthlySummary({ month: "2026-07" });
+    const august = await caller.finance.monthlySummary({ month: "2026-08" });
+
+    expect(july.balances).toMatchObject({ expenses: 0, possibleExpenses: 70, confirmedBalance: 0, balanceWithPossibleIncome: -70 });
+    expect(july.lines).toEqual(expect.arrayContaining([expect.objectContaining({ id: "transaction-31", source: "possible_expense", certainty: "possible" })]));
+    expect(august.balances).toMatchObject({ expenses: 240, possibleExpenses: 0, confirmedBalance: -240 });
+    expect(august.lines).toEqual(expect.arrayContaining([expect.objectContaining({ id: "transaction-32", source: "card_forecast", certainty: "confirmed" })]));
   });
 });

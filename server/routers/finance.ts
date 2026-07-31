@@ -71,6 +71,17 @@ function dateKey(value: Date | string | null | undefined) {
   return typeof value === "string" ? value : value.toISOString().slice(0, 10);
 }
 
+function todayInSpain() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value;
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
 async function assertOwnedLoan(userId: number, loanId: number) {
   const db = await requireDatabase();
   const record = await db
@@ -199,7 +210,7 @@ const transactionInput = z.object({
   accountId: z.number().int().positive().optional().nullable(),
   description: z.string().trim().min(1).max(220),
   direction: directionSchema,
-  kind: z.enum(["extra_income", "possible_income", "extra_bill", "card_expense", "manual_income", "manual_expense"]),
+  kind: z.enum(["extra_income", "possible_income", "possible_expense", "extra_bill", "card_expense", "card_forecast", "manual_income", "manual_expense"]),
   certainty: z.enum(["confirmed", "possible"]).default("confirmed"),
   currency: currencySchema.default("EUR"),
   amount: moneySchema,
@@ -210,12 +221,14 @@ const transactionInput = z.object({
 
 const settlementInput = z.object({
   month: monthSchema,
-  conceptId: z.string().regex(/^(recurring|loan|financing|extra_income|possible_income|extra_bill|card_expense|manual_income|manual_expense)-\d+$/),
-  source: z.enum(["recurring", "loan", "financing", "extra_income", "possible_income", "extra_bill", "card_expense", "manual_income", "manual_expense"]),
+  conceptId: z.string().regex(/^(recurring|loan|financing|transaction)-\d+$/),
+  source: z.enum(["recurring", "loan", "financing", "extra_income", "possible_income", "possible_expense", "extra_bill", "card_expense", "card_forecast", "manual_income", "manual_expense"]),
   description: z.string().trim().min(1).max(220),
   direction: directionSchema,
   certainty: z.enum(["confirmed", "possible"]),
   currency: currencySchema,
+  plannedAmount: moneySchema,
+  plannedAmountEur: z.coerce.number().finite().min(0).max(999_999_999).nullable(),
   amount: moneySchema,
   amountEur: z.coerce.number().finite().min(0).max(999_999_999).nullable(),
   accountId: z.number().int().positive(),
@@ -250,8 +263,8 @@ const portableBackupSchema = z.object({
     loanInstallments: z.array(z.object({ loanId: importedIdSchema, installmentNumber: z.number().int().positive(), dueDate: dateSchema, totalPayment: importedDecimalSchema, principalPayment: importedDecimalSchema, interestPayment: importedDecimalSchema, remainingPrincipal: importedDecimalSchema, isPaid: z.boolean().default(false), paidOn: dateSchema.nullable().optional().default(null) })).max(20_000).default([]),
     financings: z.array(z.object({ concept: z.string().min(1).max(180), provider: importedNullableText(160), currency: currencySchema, monthlyAmount: importedDecimalSchema.refine(value => value > 0), totalAmount: importedDecimalSchema.nullable().optional().default(null), paymentDay: z.number().int().min(1).max(31), startDate: dateSchema, endDate: dateSchema, status: z.enum(["active", "archived"]), notes: importedNullableText(4_000) })).max(5_000).default([]),
     recurringTransactions: z.array(z.object({ categoryId: importedIdSchema.nullable().optional().default(null), accountId: importedIdSchema.nullable().optional().default(null), name: z.string().min(1).max(180), direction: directionSchema, kind: z.enum(["fixed_income", "recurring_bill"]), certainty: z.enum(["confirmed", "possible"]), currency: currencySchema, amount: importedDecimalSchema.refine(value => value > 0), dayOfMonth: z.number().int().min(1).max(31), startDate: dateSchema, endDate: dateSchema.nullable().optional().default(null), notes: importedNullableText(4_000), isActive: z.boolean() })).max(10_000).default([]),
-    transactions: z.array(z.object({ categoryId: importedIdSchema.nullable().optional().default(null), accountId: importedIdSchema.nullable().optional().default(null), description: z.string().min(1).max(220), direction: directionSchema, kind: z.enum(["extra_income", "possible_income", "extra_bill", "card_expense", "manual_income", "manual_expense"]), certainty: z.enum(["confirmed", "possible"]), currency: currencySchema, amount: importedDecimalSchema.refine(value => value > 0), exchangeRateToEur: importedDecimalSchema.nullable().optional().default(null), effectiveDate: dateSchema, notes: importedNullableText(4_000) })).max(20_000).default([]),
-    monthlyConceptSettlements: z.array(z.object({ month: monthSchema, conceptId: z.string().min(3).max(96), source: z.enum(["recurring", "loan", "financing", "extra_income", "possible_income", "extra_bill", "card_expense", "manual_income", "manual_expense"]), description: z.string().min(1).max(220), direction: directionSchema, certainty: z.enum(["confirmed", "possible"]), currency: currencySchema, amount: importedDecimalSchema.refine(value => value > 0), amountEur: importedDecimalSchema.nullable().optional().default(null), accountId: importedIdSchema.nullable().optional().default(null), status: z.literal("settled"), settledOn: dateSchema })).max(20_000).default([]),
+    transactions: z.array(z.object({ categoryId: importedIdSchema.nullable().optional().default(null), accountId: importedIdSchema.nullable().optional().default(null), description: z.string().min(1).max(220), direction: directionSchema, kind: z.enum(["extra_income", "possible_income", "possible_expense", "extra_bill", "card_expense", "card_forecast", "manual_income", "manual_expense"]), certainty: z.enum(["confirmed", "possible"]), currency: currencySchema, amount: importedDecimalSchema.refine(value => value > 0), exchangeRateToEur: importedDecimalSchema.nullable().optional().default(null), effectiveDate: dateSchema, notes: importedNullableText(4_000) })).max(20_000).default([]),
+    monthlyConceptSettlements: z.array(z.object({ month: monthSchema, conceptId: z.string().min(3).max(96), source: z.enum(["recurring", "loan", "financing", "extra_income", "possible_income", "possible_expense", "extra_bill", "card_expense", "card_forecast", "manual_income", "manual_expense"]), description: z.string().min(1).max(220), direction: directionSchema, certainty: z.enum(["confirmed", "possible"]), currency: currencySchema, plannedAmount: importedDecimalSchema.optional(), plannedAmountEur: importedDecimalSchema.nullable().optional().default(null), amount: importedDecimalSchema.refine(value => value > 0), amountEur: importedDecimalSchema.nullable().optional().default(null), accountId: importedIdSchema.nullable().optional().default(null), status: z.literal("settled"), settledOn: dateSchema })).max(20_000).default([]),
     debts: z.array(z.object({ counterparty: z.string().min(1).max(160), direction: z.enum(["in_favor", "against"]), currency: currencySchema, amount: importedDecimalSchema.refine(value => value > 0), originatedOn: dateSchema, dueDate: dateSchema.nullable().optional().default(null), status: z.enum(["open", "settled", "cancelled"]), notes: importedNullableText(4_000) })).max(10_000).default([]),
   }),
 });
@@ -537,7 +550,7 @@ export const financeRouter = router({
   }),
 
   transactions: router({
-    list: protectedProcedure.input(z.object({ month: monthSchema.optional(), kind: z.enum(["extra_income", "possible_income", "extra_bill", "card_expense", "manual_income", "manual_expense"]).optional() }).optional()).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(z.object({ month: monthSchema.optional(), kind: z.enum(["extra_income", "possible_income", "possible_expense", "extra_bill", "card_expense", "card_forecast", "manual_income", "manual_expense"]).optional() }).optional()).query(async ({ ctx, input }) => {
       const db = await requireDatabase();
       const conditions = [eq(transactions.userId, ctx.user.id)];
       if (input?.month) {
@@ -564,7 +577,7 @@ export const financeRouter = router({
     }),
     save: protectedProcedure.input(transactionInput).mutation(async ({ ctx, input }) => {
       const db = await requireDatabase();
-      const certainty = input.kind === "possible_income" ? "possible" : input.direction === "expense" ? "confirmed" : input.certainty;
+      const certainty = input.kind === "possible_income" || input.kind === "possible_expense" ? "possible" : input.direction === "expense" ? "confirmed" : input.certainty;
       const values = {
         categoryId: input.categoryId ?? null,
         accountId: input.accountId ?? null,
@@ -594,11 +607,6 @@ export const financeRouter = router({
 
   settlements: router({
     settle: protectedProcedure.input(settlementInput).mutation(async ({ ctx, input }) => {
-      const { start, end } = monthBounds(input.month);
-      if (input.settledOn < start || input.settledOn > end) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "La fecha de liquidación debe pertenecer al mes seleccionado." });
-      }
-
       const db = await requireDatabase();
       const targetAccount = await db
         .select({ id: accounts.id, currency: accounts.currency })
@@ -622,6 +630,8 @@ export const financeRouter = router({
         direction: input.direction,
         certainty: input.certainty,
         currency: input.currency,
+        plannedAmount: input.plannedAmount.toFixed(2),
+        plannedAmountEur: input.plannedAmountEur === null ? null : input.plannedAmountEur.toFixed(2),
         amount: input.amount.toFixed(2),
         amountEur: input.amountEur === null ? null : input.amountEur.toFixed(2),
         accountId: input.accountId,
@@ -629,29 +639,108 @@ export const financeRouter = router({
         settledOn: input.settledOn,
       };
 
-      await db.insert(monthlyConceptSettlements).values(values).onDuplicateKeyUpdate({
-        set: {
-          source: values.source,
-          description: values.description,
-          direction: values.direction,
-          certainty: values.certainty,
-          currency: values.currency,
-          amount: values.amount,
-          amountEur: values.amountEur,
-          accountId: values.accountId,
-          status: values.status,
-          settledOn: values.settledOn,
-        },
+      const snapshotDate = todayInSpain();
+      await db.transaction(async tx => {
+        const applyAccountDelta = async (accountId: number, delta: number) => {
+          if (delta === 0) return;
+          const latestSnapshot = await tx
+            .select({ balance: accountBalanceSnapshots.balance })
+            .from(accountBalanceSnapshots)
+            .where(eq(accountBalanceSnapshots.accountId, accountId))
+            .orderBy(desc(accountBalanceSnapshots.recordedOn), desc(accountBalanceSnapshots.id))
+            .limit(1);
+          const nextBalance = roundMoney(numberValue(latestSnapshot[0]?.balance) + delta);
+          await tx.insert(accountBalanceSnapshots).values({
+            accountId,
+            balance: nextBalance.toFixed(2),
+            recordedOn: snapshotDate,
+            note: "Actualizado al liquidar un cobro o pago",
+          }).onDuplicateKeyUpdate({
+            set: {
+              balance: nextBalance.toFixed(2),
+              note: "Actualizado al liquidar un cobro o pago",
+            },
+          });
+        };
+
+        const previous = await tx
+          .select({ accountId: monthlyConceptSettlements.accountId, direction: monthlyConceptSettlements.direction, amount: monthlyConceptSettlements.amount })
+          .from(monthlyConceptSettlements)
+          .where(and(
+            eq(monthlyConceptSettlements.userId, ctx.user.id),
+            eq(monthlyConceptSettlements.month, input.month),
+            eq(monthlyConceptSettlements.conceptId, input.conceptId),
+          ))
+          .limit(1);
+
+        if (previous[0]?.accountId !== null && previous[0]?.accountId !== undefined) {
+          const reversal = previous[0].direction === "income" ? -numberValue(previous[0].amount) : numberValue(previous[0].amount);
+          await applyAccountDelta(previous[0].accountId, reversal);
+        }
+
+        await tx.insert(monthlyConceptSettlements).values(values).onDuplicateKeyUpdate({
+          set: {
+            source: values.source,
+            description: values.description,
+            direction: values.direction,
+            certainty: values.certainty,
+            currency: values.currency,
+            plannedAmount: values.plannedAmount,
+            plannedAmountEur: values.plannedAmountEur,
+            amount: values.amount,
+            amountEur: values.amountEur,
+            accountId: values.accountId,
+            status: values.status,
+            settledOn: values.settledOn,
+          },
+        });
+
+        await applyAccountDelta(input.accountId, input.direction === "income" ? input.amount : -input.amount);
       });
       return { success: true };
     }),
     undo: protectedProcedure.input(z.object({ month: monthSchema, conceptId: z.string().min(3).max(96) })).mutation(async ({ ctx, input }) => {
       const db = await requireDatabase();
-      await db.delete(monthlyConceptSettlements).where(and(
-        eq(monthlyConceptSettlements.userId, ctx.user.id),
-        eq(monthlyConceptSettlements.month, input.month),
-        eq(monthlyConceptSettlements.conceptId, input.conceptId),
-      ));
+      const snapshotDate = todayInSpain();
+      await db.transaction(async tx => {
+        const existing = await tx
+          .select({ accountId: monthlyConceptSettlements.accountId, direction: monthlyConceptSettlements.direction, amount: monthlyConceptSettlements.amount })
+          .from(monthlyConceptSettlements)
+          .where(and(
+            eq(monthlyConceptSettlements.userId, ctx.user.id),
+            eq(monthlyConceptSettlements.month, input.month),
+            eq(monthlyConceptSettlements.conceptId, input.conceptId),
+          ))
+          .limit(1);
+
+        if (existing[0]?.accountId !== null && existing[0]?.accountId !== undefined) {
+          const latestSnapshot = await tx
+            .select({ balance: accountBalanceSnapshots.balance })
+            .from(accountBalanceSnapshots)
+            .where(eq(accountBalanceSnapshots.accountId, existing[0].accountId))
+            .orderBy(desc(accountBalanceSnapshots.recordedOn), desc(accountBalanceSnapshots.id))
+            .limit(1);
+          const reversal = existing[0].direction === "income" ? -numberValue(existing[0].amount) : numberValue(existing[0].amount);
+          const nextBalance = roundMoney(numberValue(latestSnapshot[0]?.balance) + reversal);
+          await tx.insert(accountBalanceSnapshots).values({
+            accountId: existing[0].accountId,
+            balance: nextBalance.toFixed(2),
+            recordedOn: snapshotDate,
+            note: "Actualizado al deshacer una liquidación",
+          }).onDuplicateKeyUpdate({
+            set: {
+              balance: nextBalance.toFixed(2),
+              note: "Actualizado al deshacer una liquidación",
+            },
+          });
+        }
+
+        await tx.delete(monthlyConceptSettlements).where(and(
+          eq(monthlyConceptSettlements.userId, ctx.user.id),
+          eq(monthlyConceptSettlements.month, input.month),
+          eq(monthlyConceptSettlements.conceptId, input.conceptId),
+        ));
+      });
       return { success: true };
     }),
   }),
@@ -811,6 +900,10 @@ export const financeRouter = router({
         settlementId: settlement?.id ?? null,
         settlementAccountId: settlement?.accountId ?? null,
         settledOn: dateKey(settlement?.settledOn),
+        plannedAmount: settlement?.plannedAmount === null || settlement?.plannedAmount === undefined ? line.amount : numberValue(settlement.plannedAmount),
+        plannedAmountEur: settlement?.plannedAmountEur === null || settlement?.plannedAmountEur === undefined ? line.amountEur : numberValue(settlement.plannedAmountEur),
+        settledAmount: settlement ? numberValue(settlement.amount) : null,
+        settledAmountEur: settlement?.amountEur === null || settlement?.amountEur === undefined ? null : numberValue(settlement.amountEur),
       };
     });
 
@@ -1077,10 +1170,12 @@ export const financeRouter = router({
         await tx.insert(recurringTransactions).values({ userId: ctx.user.id, categoryId: recurring.categoryId ? categoryIdMap.get(recurring.categoryId) ?? null : null, accountId: recurring.accountId ? accountIdMap.get(recurring.accountId) ?? null : null, name: recurring.name, direction: recurring.direction, kind: recurring.kind, certainty: recurring.direction === "expense" ? "confirmed" : recurring.certainty, currency: recurring.currency, amount: recurring.amount.toFixed(2), dayOfMonth: recurring.dayOfMonth, startDate: recurring.startDate, endDate: recurring.endDate, notes: recurring.notes, isActive: recurring.isActive });
       }
       for (const transaction of backup.transactions) {
-        await tx.insert(transactions).values({ userId: ctx.user.id, categoryId: transaction.categoryId ? categoryIdMap.get(transaction.categoryId) ?? null : null, accountId: transaction.accountId ? accountIdMap.get(transaction.accountId) ?? null : null, description: transaction.description, direction: transaction.direction, kind: transaction.kind, certainty: transaction.kind === "possible_income" ? "possible" : transaction.direction === "expense" ? "confirmed" : transaction.certainty, currency: transaction.currency, amount: transaction.amount.toFixed(2), exchangeRateToEur: transaction.currency === "USD" && transaction.exchangeRateToEur ? transaction.exchangeRateToEur.toFixed(8) : null, effectiveDate: transaction.effectiveDate, notes: transaction.notes });
+        await tx.insert(transactions).values({ userId: ctx.user.id, categoryId: transaction.categoryId ? categoryIdMap.get(transaction.categoryId) ?? null : null, accountId: transaction.accountId ? accountIdMap.get(transaction.accountId) ?? null : null, description: transaction.description, direction: transaction.direction, kind: transaction.kind, certainty: transaction.kind === "possible_income" || transaction.kind === "possible_expense" ? "possible" : transaction.direction === "expense" ? "confirmed" : transaction.certainty, currency: transaction.currency, amount: transaction.amount.toFixed(2), exchangeRateToEur: transaction.currency === "USD" && transaction.exchangeRateToEur ? transaction.exchangeRateToEur.toFixed(8) : null, effectiveDate: transaction.effectiveDate, notes: transaction.notes });
       }
       for (const settlement of backup.monthlyConceptSettlements) {
-        await tx.insert(monthlyConceptSettlements).values({ userId: ctx.user.id, month: settlement.month, conceptId: settlement.conceptId, source: settlement.source, description: settlement.description, direction: settlement.direction, certainty: settlement.certainty, currency: settlement.currency, amount: settlement.amount.toFixed(2), amountEur: settlement.amountEur === null ? null : settlement.amountEur.toFixed(2), accountId: settlement.accountId ? accountIdMap.get(settlement.accountId) ?? null : null, status: "settled", settledOn: settlement.settledOn }).onDuplicateKeyUpdate({ set: { source: settlement.source, description: settlement.description, direction: settlement.direction, certainty: settlement.certainty, currency: settlement.currency, amount: settlement.amount.toFixed(2), amountEur: settlement.amountEur === null ? null : settlement.amountEur.toFixed(2), accountId: settlement.accountId ? accountIdMap.get(settlement.accountId) ?? null : null, status: "settled", settledOn: settlement.settledOn } });
+        const plannedAmount = settlement.plannedAmount ?? settlement.amount;
+        const plannedAmountEur = settlement.plannedAmountEur ?? settlement.amountEur;
+        await tx.insert(monthlyConceptSettlements).values({ userId: ctx.user.id, month: settlement.month, conceptId: settlement.conceptId, source: settlement.source, description: settlement.description, direction: settlement.direction, certainty: settlement.certainty, currency: settlement.currency, plannedAmount: plannedAmount.toFixed(2), plannedAmountEur: plannedAmountEur === null ? null : plannedAmountEur.toFixed(2), amount: settlement.amount.toFixed(2), amountEur: settlement.amountEur === null ? null : settlement.amountEur.toFixed(2), accountId: settlement.accountId ? accountIdMap.get(settlement.accountId) ?? null : null, status: "settled", settledOn: settlement.settledOn }).onDuplicateKeyUpdate({ set: { source: settlement.source, description: settlement.description, direction: settlement.direction, certainty: settlement.certainty, currency: settlement.currency, plannedAmount: plannedAmount.toFixed(2), plannedAmountEur: plannedAmountEur === null ? null : plannedAmountEur.toFixed(2), amount: settlement.amount.toFixed(2), amountEur: settlement.amountEur === null ? null : settlement.amountEur.toFixed(2), accountId: settlement.accountId ? accountIdMap.get(settlement.accountId) ?? null : null, status: "settled", settledOn: settlement.settledOn } });
       }
       for (const debt of backup.debts) {
         await tx.insert(debts).values({ userId: ctx.user.id, counterparty: debt.counterparty, direction: debt.direction, currency: debt.currency, amount: debt.amount.toFixed(2), originatedOn: debt.originatedOn, dueDate: debt.dueDate, status: debt.status, notes: debt.notes });

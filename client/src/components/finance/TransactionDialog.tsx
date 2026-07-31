@@ -9,7 +9,7 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-export type TransactionKind = "extra_income" | "possible_income" | "extra_bill" | "card_expense" | "manual_income" | "manual_expense";
+export type TransactionKind = "extra_income" | "possible_income" | "possible_expense" | "extra_bill" | "card_expense" | "card_forecast" | "manual_income" | "manual_expense";
 
 export type TransactionRecord = {
   id: number;
@@ -29,8 +29,10 @@ export type TransactionRecord = {
 const KIND_DETAILS: Record<TransactionKind, { title: string; description: string; direction: "income" | "expense"; label: string }> = {
   extra_income: { title: "Ingreso extraordinario", description: "Registra un ingreso confirmado que no se repite automáticamente.", direction: "income", label: "Ingreso" },
   possible_income: { title: "Ingreso posible", description: "Se mostrará únicamente en el balance incluyendo posibles.", direction: "income", label: "Ingreso posible" },
+  possible_expense: { title: "Gasto posible", description: "Se mostrará únicamente en el balance incluyendo posibles hasta que se confirme.", direction: "expense", label: "Gasto posible" },
   extra_bill: { title: "Recibo extraordinario", description: "Registra un gasto puntual fuera de los recibos habituales.", direction: "expense", label: "Recibo" },
   card_expense: { title: "Gasto de tarjeta", description: "Registra o actualiza un gasto imputado a la tarjeta este mes.", direction: "expense", label: "Gasto de tarjeta" },
+  card_forecast: { title: "Previsión de tarjeta", description: "Registra el pago estimado de una tarjeta para el mes seleccionado.", direction: "expense", label: "Previsión de tarjeta" },
   manual_income: { title: "Otro ingreso", description: "Registra un ingreso confirmado de forma manual.", direction: "income", label: "Ingreso" },
   manual_expense: { title: "Otro gasto", description: "Registra un gasto confirmado de forma manual.", direction: "expense", label: "Gasto" },
 };
@@ -41,12 +43,16 @@ export function TransactionDialog({
   kind,
   transaction,
   onSaved,
+  initialDate,
+  initialDescription,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   kind: TransactionKind;
   transaction?: TransactionRecord | null;
   onSaved?: () => void;
+  initialDate?: string;
+  initialDescription?: string;
 }) {
   const details = KIND_DETAILS[kind];
   const utils = trpc.useUtils();
@@ -74,15 +80,15 @@ export function TransactionDialog({
 
   useEffect(() => {
     if (!open) return;
-    setDescription(transaction?.description ?? "");
+    setDescription(transaction?.description ?? initialDescription ?? "");
     setAmount(transaction?.amount ?? "");
     setCurrency(transaction?.currency ?? "EUR");
     setExchangeRate(transaction?.exchangeRateToEur ?? "");
-    setEffectiveDate(transaction?.effectiveDate ?? isoToday());
+    setEffectiveDate(transaction?.effectiveDate ?? initialDate ?? isoToday());
     setCategoryId(transaction?.categoryId ? String(transaction.categoryId) : "");
     setAccountId(transaction?.accountId ? String(transaction.accountId) : "");
     setNotes(transaction?.notes ?? "");
-  }, [open, kind, transaction]);
+  }, [open, kind, transaction, initialDate, initialDescription]);
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -101,7 +107,7 @@ export function TransactionDialog({
       description: description.trim(),
       direction: details.direction,
       kind,
-      certainty: kind === "possible_income" ? "possible" : "confirmed",
+      certainty: kind === "possible_income" || kind === "possible_expense" ? "possible" : "confirmed",
       amount: parsedAmount,
       currency,
       exchangeRateToEur: currency === "USD" ? Number(exchangeRate) : null,

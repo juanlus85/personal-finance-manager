@@ -41,30 +41,33 @@ describe("financial calculations", () => {
         { direction: "income", certainty: "confirmed", amountEur: 1000 },
         { direction: "income", certainty: "possible", amountEur: 200 },
         { direction: "expense", certainty: "confirmed", amountEur: 650 },
+        { direction: "expense", certainty: "possible", amountEur: 125 },
         { direction: "income", certainty: "confirmed", amountEur: null },
       ]),
     ).toEqual({
       confirmedIncome: 1000,
       possibleIncome: 200,
+      possibleExpenses: 125,
       expenses: 650,
       confirmedBalance: 350,
-      balanceWithPossibleIncome: 550,
+      balanceWithPossibleIncome: 425,
       linesWithoutConversion: 1,
     });
   });
 
   it("separates settled cash movements from next actions without carrying them to a new month", () => {
     const currentMonth = calculateMonthlySettlement([
-      { direction: "income", certainty: "confirmed", amountEur: 2000, settlementStatus: "settled" },
+      { direction: "income", certainty: "confirmed", amountEur: 2000, settledAmountEur: 2030, settlementStatus: "settled" },
       { direction: "expense", certainty: "confirmed", amountEur: 650, settlementStatus: "pending" },
       { direction: "income", certainty: "possible", amountEur: 300, settlementStatus: "pending" },
-      { direction: "expense", certainty: "confirmed", amountEur: 50, settlementStatus: "settled" },
+      { direction: "expense", certainty: "confirmed", amountEur: 50, settledAmountEur: 45, settlementStatus: "settled" },
     ]);
 
     expect(currentMonth).toMatchObject({
-      settledIncome: 2000,
-      settledExpenses: 50,
-      settledNet: 1950,
+      settledIncome: 2030,
+      settledExpenses: 45,
+      settledNet: 1985,
+      settledVarianceNet: 35,
       pendingConfirmedIncome: 0,
       pendingPossibleIncome: 300,
       pendingExpenses: 650,

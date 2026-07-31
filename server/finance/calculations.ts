@@ -29,6 +29,7 @@ export type BalanceLine = {
 export type MonthlyBalanceSummary = {
   confirmedIncome: number;
   possibleIncome: number;
+  possibleExpenses: number;
   expenses: number;
   confirmedBalance: number;
   balanceWithPossibleIncome: number;
@@ -37,6 +38,7 @@ export type MonthlyBalanceSummary = {
 
 export type SettlementBalanceLine = BalanceLine & {
   settlementStatus: SettlementStatus;
+  settledAmountEur?: number | null;
 };
 
 export type MonthlySettlementSummary = {
@@ -46,6 +48,7 @@ export type MonthlySettlementSummary = {
   settledIncome: number;
   settledExpenses: number;
   settledNet: number;
+  settledVarianceNet: number;
   pendingNet: number;
   pendingConcepts: number;
   settledConcepts: number;
@@ -137,6 +140,7 @@ export function generateFrenchAmortizationSchedule(input: AmortizationInput): Ge
 export function calculateMonthlyBalances(lines: BalanceLine[]): MonthlyBalanceSummary {
   let confirmedIncome = 0;
   let possibleIncome = 0;
+  let possibleExpenses = 0;
   let expenses = 0;
   let linesWithoutConversion = 0;
 
@@ -147,7 +151,8 @@ export function calculateMonthlyBalances(lines: BalanceLine[]): MonthlyBalanceSu
     }
 
     if (line.direction === "expense") {
-      expenses += line.amountEur;
+      if (line.certainty === "possible") possibleExpenses += line.amountEur;
+      else expenses += line.amountEur;
       continue;
     }
 
@@ -162,9 +167,10 @@ export function calculateMonthlyBalances(lines: BalanceLine[]): MonthlyBalanceSu
   return {
     confirmedIncome: roundMoney(confirmedIncome),
     possibleIncome: roundMoney(possibleIncome),
+    possibleExpenses: roundMoney(possibleExpenses),
     expenses: roundMoney(expenses),
     confirmedBalance,
-    balanceWithPossibleIncome: roundMoney(confirmedBalance + possibleIncome),
+    balanceWithPossibleIncome: roundMoney(confirmedBalance + possibleIncome - possibleExpenses),
     linesWithoutConversion,
   };
 }
@@ -192,8 +198,9 @@ export function calculateMonthlySettlement(lines: SettlementBalanceLine[]): Mont
 
     if (line.settlementStatus === "settled") {
       settledConcepts += 1;
-      if (line.direction === "income") settledIncome += line.amountEur;
-      else settledExpenses += line.amountEur;
+      const actualAmountEur = line.settledAmountEur ?? line.amountEur;
+      if (line.direction === "income") settledIncome += actualAmountEur;
+      else settledExpenses += actualAmountEur;
       continue;
     }
 
@@ -210,6 +217,7 @@ export function calculateMonthlySettlement(lines: SettlementBalanceLine[]): Mont
     settledIncome: roundMoney(settledIncome),
     settledExpenses: roundMoney(settledExpenses),
     settledNet: roundMoney(settledIncome - settledExpenses),
+    settledVarianceNet: roundMoney(lines.filter(line => line.settlementStatus === "settled" && line.amountEur !== null && line.settledAmountEur !== null).reduce((total, line) => total + (line.direction === "income" ? line.settledAmountEur! - line.amountEur! : line.amountEur! - line.settledAmountEur!), 0)),
     pendingNet: roundMoney(pendingConfirmedIncome - pendingExpenses),
     pendingConcepts,
     settledConcepts,

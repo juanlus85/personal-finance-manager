@@ -25,7 +25,7 @@
 - [x] Documentar y validar los flujos interactivos de altas, edición, eliminación, importación y exportación en escritorio y móvil.
 - [x] Preparar un repositorio privado en GitHub y documentación de instalación, actualización con `git pull` y configuración de dominio en VPS.
 - [ ] Configurar las credenciales reales de Google OAuth y validar el inicio de sesión en el dominio de producción.
-- [ ] Ejecutar una prueba controlada de extremo a extremo con registros temporales autorizados y eliminarlos al finalizar.
+- [x] Ejecutar una prueba controlada de extremo a extremo con registros temporales autorizados y eliminarlos al finalizar.
 - [x] Diseñar el estado mensual de cada concepto como pendiente, cobrado o pagado sin perder su planificación original.
 - [x] Crear una pantalla de liquidación del mes en curso con acciones rápidas para cobrar ingresos y pagar gastos.
 - [x] Permitir elegir la cuenta o efectivo afectado y actualizar su saldo disponible al liquidar un concepto.
@@ -36,6 +36,34 @@
 - [x] Verificar mediante el router que un concepto recurrente liquidado vuelve a estar pendiente en el mes siguiente.
 - [x] Cubrir en pruebas el efecto acumulado de cobros y pagos liquidados sobre el saldo disponible.
 - [x] Corregir el límite de fecha del diálogo de liquidación para respetar la duración real de cada mes.
+- [x] Corregir los botones Cobrar, Pagar y Confirmar y cobrar para que abran y ejecuten la liquidación del concepto.
+- [x] Añadir una prueba de interfaz o de flujo que detecte la apertura del diálogo de liquidación desde cada acción.
+- [ ] Ejecutar una prueba interactiva completa de liquidación desde la interfaz y verificar el cambio de estado y disponible.
+- [ ] Verificar que Confirmar y cobrar abre el diálogo y que el envío de la interfaz invoca la liquidación correctamente.
+- [x] Corregir la validación de identificadores para permitir liquidar movimientos puntuales de tarjeta, ingresos y gastos.
+- [x] Permitir editar el importe real cobrado o pagado antes de liquidar un concepto.
+- [x] Conservar el importe planificado y mostrar la diferencia entre previsión e importe real liquidado.
+- [x] Ajustar la conversión a EUR y el saldo de la cuenta según el importe real confirmado.
+- [x] Añadir pruebas de importes ajustados y sus efectos en disponibilidad, historial y copias de seguridad.
+- [x] Permitir registrar gastos posibles únicos, además de ingresos posibles, con impacto separado del balance confirmado.
+- [x] Añadir una sección de previsión manual para los pagos de tarjetas BBVA, Amex, Carrefour y El Corte Inglés.
+- [x] Imputar cada previsión de tarjeta al mes futuro elegido y reflejarla en sus balances, pendientes e informes.
+- [x] Permitir editar, eliminar y consultar las previsiones de tarjetas sin registrar los movimientos individuales.
+- [x] Añadir pruebas de balances y transición de mes para movimientos posibles y previsiones de tarjetas.
+- [x] Corregir la ruta del resumen mensual para que el acceso desde navegación y URL directa muestre la pantalla de balance.
+- [ ] Verificar y, si hace falta, corregir el enlace de navegación al resumen mensual para que apunte a una ruta válida.
+- [ ] Comprobar de forma interactiva el acceso desde la navegación hasta el resumen mensual y documentar el resultado.
+- [x] Diagnosticar por qué un pago liquidado no reduce el saldo disponible de la cuenta seleccionada.
+- [x] Corregir el cálculo y la persistencia de saldos para que cada pago reste y cada cobro sume el importe real liquidado.
+- [ ] Añadir una prueba de regresión del saldo por cuenta tras liquidar un pago desde la interfaz.
+- [x] Hacer que los cobros y pagos liquidados actualicen inmediatamente la cuenta elegida aunque su fecha prevista sea futura.
+- [x] Verificar que la fecha prevista no excluya del disponible una liquidación ya confirmada.
+- [ ] Completar una prueba interactiva E2E de liquidación desde la interfaz verificando cambio de estado, disponible y limpieza final de registros temporales.
+- [x] Añadir pruebas del router y del resumen para importes ajustados que verifiquen disponibilidad por cuenta, historial y copia de seguridad.
+- [x] Añadir una prueba específica de previsiones de tarjeta para el mes futuro seleccionado y su presencia en resumen, liquidación e informes.
+- [x] Añadir pruebas de transición de mes para gastos posibles y previsiones de tarjetas.
+- [x] Añadir una prueba de informes que confirme la presencia de una previsión de tarjeta en el mes futuro correspondiente.
+- [ ] Realizar una comprobación autenticada de cobro o pago que confirme visualmente la actualización inmediata del disponible.
 - [x] Añadir una visualización de distribución de ingresos por categoría en la pantalla de informes.
 - [x] Implementar importación manual validada de datos de finanzas en formato JSON portable.
 - [x] Crear pruebas para los procedimientos financieros principales, incluido el resumen mensual, tendencias y exportación.
