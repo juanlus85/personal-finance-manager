@@ -10,10 +10,10 @@ Esta guía instala la misma aplicación probada en desarrollo en un VPS con **Pl
 |---|---|
 | DNS | Crear un registro `A` para `finanzas.blancoguzman.es` apuntando a la IP pública del VPS. |
 | Plesk | Añadir el subdominio `finanzas.blancoguzman.es`. |
-| TLS | Emitir y activar un certificado Let’s Encrypt para el subdominio antes de probar Google OAuth. |
+| TLS | Emitir y activar un certificado Let’s Encrypt para el subdominio antes de acceder con la cuenta local. |
 | Aplicación Node.js | Configurar el modo `production` y el archivo de inicio `dist/index.js`. |
 
-La aplicación debe estar disponible mediante HTTPS antes de registrar el inicio de sesión de Google, porque las URIs de retorno de producción requieren HTTPS.
+La aplicación debe estar disponible mediante HTTPS para que las cookies de sesión privadas se transmitan de forma segura.
 
 ## 2. Base de datos MySQL
 
@@ -26,17 +26,9 @@ GRANT ALL PRIVILEGES ON finanzas_personales.* TO 'finance_app'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-## 3. Cliente Google OAuth
+## 3. Acceso local único
 
-En [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crea un cliente OAuth de tipo **Aplicación web**. Añade exactamente los siguientes valores:
-
-| Campo de Google | Valor |
-|---|---|
-| Origen JavaScript autorizado | `https://finanzas.blancoguzman.es` |
-| URI de redirección autorizada | `https://finanzas.blancoguzman.es/auth/google/callback` |
-| Usuario permitido por la aplicación | `juanlu85@gmail.com` |
-
-Guarda el identificador y el secreto del cliente solo en el archivo `.env` del VPS. Aunque Google permita iniciar el flujo desde otra cuenta, el servidor verificará el correo confirmado y rechazará cualquier dirección distinta de `juanlu85@gmail.com`.
+No es necesario crear ni mantener un cliente de Google OAuth. En el archivo `.env` del VPS define `LOCAL_AUTH_USERNAME` y `LOCAL_AUTH_PASSWORD` junto con un `JWT_SECRET` aleatorio de al menos 32 caracteres. La contraseña se lee únicamente en el servidor, se compara de forma segura y nunca se incluye en el repositorio ni en los activos del navegador.
 
 ## 4. Primera instalación por SSH
 
@@ -94,8 +86,8 @@ Para restaurar una copia funcional, usa primero el respaldo SQL completo. Para r
 
 Antes de considerar el despliegue terminado, comprueba lo siguiente:
 
-- `https://finanzas.blancoguzman.es` redirige al inicio de sesión de Google y usa HTTPS válido.
-- `juanlu85@gmail.com` accede correctamente y una cuenta Google diferente obtiene un rechazo de autorización.
+- `https://finanzas.blancoguzman.es` muestra el formulario de acceso local y usa HTTPS válido.
+- El usuario local autorizado accede correctamente y una contraseña incorrecta recibe un rechazo sin crear sesión.
 - Se puede crear un ingreso, un gasto de tarjeta, un recibo habitual, un préstamo, una financiación, una cuenta, una deuda y un tipo de cambio USD → EUR.
 - El resumen mensual diferencia el balance confirmado del balance con ingresos posibles.
 - Un préstamo o financiación terminado deja de aparecer en los meses posteriores a su vencimiento.

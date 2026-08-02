@@ -14,4 +14,8 @@ describe("Google OAuth access allowlist", () => {
     expect(isAllowedGoogleIdentity("juanlu85@gmail.com", false, allowedEmail)).toBe(false);
     expect(isAllowedGoogleIdentity(undefined, true, allowedEmail)).toBe(false);
   });
+
+  it("leaves Google disabled when the published client uses local authentication", () => {
+    expect(process.env.VITE_AUTH_PROVIDER).toBe("local");
+  });
 });

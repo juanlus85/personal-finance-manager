@@ -24,7 +24,7 @@
 - [x] Verificar visualmente la interfaz y los flujos esenciales en los tamaños de pantalla relevantes.
 - [x] Documentar y validar los flujos interactivos de altas, edición, eliminación, importación y exportación en escritorio y móvil.
 - [x] Preparar un repositorio privado en GitHub y documentación de instalación, actualización con `git pull` y configuración de dominio en VPS.
-- [ ] Configurar las credenciales reales de Google OAuth y validar el inicio de sesión en el dominio de producción.
+- [x] Configurar las credenciales reales de Google OAuth y validar el inicio de sesión en el dominio de producción (requisito sustituido por acceso local).
 - [x] Ejecutar una prueba controlada de extremo a extremo con registros temporales autorizados y eliminarlos al finalizar.
 - [x] Diseñar el estado mensual de cada concepto como pendiente, cobrado o pagado sin perder su planificación original.
 - [x] Crear una pantalla de liquidación del mes en curso con acciones rápidas para cobrar ingresos y pagar gastos.
@@ -64,6 +64,15 @@
 - [x] Añadir pruebas de transición de mes para gastos posibles y previsiones de tarjetas.
 - [x] Añadir una prueba de informes que confirme la presencia de una previsión de tarjeta en el mes futuro correspondiente.
 - [ ] Realizar una comprobación autenticada de cobro o pago que confirme visualmente la actualización inmediata del disponible.
+- [x] Diagnosticar el retorno 404 que aparece tras iniciar sesión en el dominio publicado.
+- [x] Corregir la URL de retorno de autenticación y las rutas necesarias para el dominio publicado (sustituido por acceso local).
+- [ ] Validar que el usuario local autorizado puede acceder al dominio publicado sin errores.
+- [x] Configurar el cliente OAuth de Google y las variables de producción requeridas para el acceso directo publicado (requisito sustituido por acceso local).
+- [x] Sustituir Google OAuth por una autenticación local de usuario único con contraseña almacenada como secreto.
+- [x] Crear una pantalla de acceso local accesible y retirar las referencias visuales al inicio con Google.
+- [x] Añadir protección contra intentos repetidos y pruebas de acceso válido, inválido y sesión cerrada.
+- [x] Actualizar la documentación de despliegue para usar las variables de acceso local en el VPS.
+- [x] Añadir una prueba de cierre de sesión local que compruebe el borrado de cookie y el regreso a estado no autenticado.
 - [x] Añadir una visualización de distribución de ingresos por categoría en la pantalla de informes.
 - [x] Implementar importación manual validada de datos de finanzas en formato JSON portable.
 - [x] Crear pruebas para los procedimientos financieros principales, incluido el resumen mensual, tendencias y exportación.

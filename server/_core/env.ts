@@ -7,6 +7,8 @@ export const ENV = {
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
   googleRedirectUri: process.env.GOOGLE_REDIRECT_URI ?? "",
+  localAuthUsername: process.env.LOCAL_AUTH_USERNAME ?? "",
+  localAuthPassword: process.env.LOCAL_AUTH_PASSWORD ?? "",
   allowedEmail: process.env.ALLOWED_EMAIL ?? "juanlu85@gmail.com",
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",

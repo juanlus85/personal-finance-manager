@@ -19,13 +19,14 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { BadgeEuro, Building2, ChartNoAxesCombined, CircleCheckBig, CreditCard, Landmark, LayoutDashboard, LogOut, PanelLeft, Settings2, WalletCards } from "lucide-react";
-import { useEffect } from "react";
+import { BadgeEuro, Building2, ChartNoAxesCombined, CircleAlert, CircleCheckBig, CreditCard, Landmark, LayoutDashboard, Loader2, LogOut, PanelLeft, Settings2, WalletCards } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Visión general", path: "/" },
@@ -44,6 +45,35 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { loading, user } = useAuth();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const handleLocalLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoginError("");
+    setIsLoggingIn(true);
+
+    try {
+      const response = await fetch("/auth/local/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username, password }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setLoginError(typeof payload.error === "string" ? payload.error : "No se pudo iniciar sesión.");
+        return;
+      }
+      window.location.assign("/");
+    } catch {
+      setLoginError("No se pudo conectar con el servidor. Inténtalo de nuevo.");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
 
   if (loading) {
     return <DashboardLayoutSkeleton />
@@ -52,7 +82,7 @@ export default function DashboardLayout({
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen px-5 soft-grid">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full rounded-[1.5rem] bg-card card-elevated border border-border">
+        <form onSubmit={handleLocalLogin} className="flex flex-col items-center gap-8 p-8 max-w-md w-full rounded-[1.5rem] bg-card card-elevated border border-border">
           <div className="flex flex-col items-center gap-6">
             <div className="h-14 w-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/20">
               <BadgeEuro className="h-7 w-7" />
@@ -64,14 +94,21 @@ export default function DashboardLayout({
               Accede a tu espacio financiero privado para consultar y actualizar tu situación mensual.
             </p>
           </div>
-          <Button
-            onClick={() => startLogin()}
-            size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
-          >
-            Continuar con Google
-          </Button>
-        </div>
+          <div className="w-full space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="local-username">Usuario</Label>
+              <Input id="local-username" autoComplete="username" value={username} onChange={event => setUsername(event.target.value)} required disabled={isLoggingIn} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="local-password">Contraseña</Label>
+              <Input id="local-password" type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required disabled={isLoggingIn} />
+            </div>
+            {loginError ? <p role="alert" className="flex gap-2 items-start rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive"><CircleAlert className="h-4 w-4 shrink-0 mt-0.5" />{loginError}</p> : null}
+            <Button type="submit" size="lg" className="w-full shadow-lg hover:shadow-xl transition-all" disabled={isLoggingIn}>
+              {isLoggingIn ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Entrando</> : "Entrar"}
+            </Button>
+          </div>
+        </form>
       </div>
     );
   }
