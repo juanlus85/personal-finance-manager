@@ -73,11 +73,16 @@
 - [x] Añadir protección contra intentos repetidos y pruebas de acceso válido, inválido y sesión cerrada.
 - [x] Actualizar la documentación de despliegue para usar las variables de acceso local en el VPS.
 - [x] Añadir una prueba de cierre de sesión local que compruebe el borrado de cookie y el regreso a estado no autenticado.
-- [ ] Diagnosticar la identidad propietaria de los datos financieros existentes tras el acceso local.
-- [ ] Vincular el acceso local al usuario propietario de los datos sin crear un espacio financiero vacío.
-- [ ] Añadir una prueba de regresión que garantice que el acceso local conserva los datos del propietario existente.
-- [ ] Migrar automáticamente en producción el usuario de datos existente al identificador local antes de crear un espacio vacío.
-- [ ] Verificar desde el dominio publicado que el usuario local recupera cuentas, préstamos y movimientos existentes.
+- [x] Diagnosticar la identidad propietaria de los datos financieros existentes tras el acceso local.
+- [x] Vincular el acceso local al usuario propietario de los datos sin crear un espacio financiero vacío.
+- [x] Añadir una prueba de regresión que garantice que el acceso local conserva los datos del propietario existente.
+- [x] Migrar automáticamente en producción el usuario de datos existente al identificador local antes de crear un espacio vacío.
+- [x] Verificar desde el dominio publicado que el usuario local recupera cuentas, préstamos y movimientos existentes.
+- [x] Añadir una prueba de integración de propietario histórico con datos y acceso local que conserve el mismo `userId` y sus relaciones.
+- [x] Verificar en producción si el usuario local activo coincide con el propietario histórico o documentar una migración alternativa segura.
+- [x] Añadir una comprobación de migración que impida dejar un usuario local vacío activo cuando exista un propietario histórico con datos.
+- [ ] Añadir una prueba integrada de `/auth/local/login` que conserve el `userId` histórico y sus relaciones cuando el acceso local esté vacío.
+- [ ] Comprobar automáticamente tras iniciar sesión que el usuario local corresponde al propietario esperado o que conserva la copia restaurada ya activa.
 - [x] Exportar e importar todas las liquidaciones mensuales con su estado, importe previsto, importe real, fecha y cuenta asociada.
 - [x] Restaurar las liquidaciones usando referencias estables a las cuentas importadas sin convertir conceptos pagados o cobrados en pendientes.
 - [x] Añadir una prueba de ida y vuelta de copia de seguridad que preserve pagos, cobros, saldos y el estado mensual exacto.

@@ -89,9 +89,9 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-async function hasFinancialData(userId: number) {
-  const db = await getDb();
-  if (!db) return false;
+type FinanceDatabase = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+async function hasFinancialData(db: FinanceDatabase, userId: number) {
   const probes = await Promise.all([
     db.select({ id: accounts.id }).from(accounts).where(eq(accounts.userId, userId)).limit(1),
     db.select({ id: loans.id }).from(loans).where(eq(loans.userId, userId)).limit(1),
@@ -104,18 +104,16 @@ async function hasFinancialData(userId: number) {
   return probes.some(result => result.length > 0);
 }
 
+export function shouldClaimLegacyFinanceOwner(currentLocalId: number | undefined, legacyOwnerId: number | undefined, localHasFinancialData: boolean, legacyHasFinancialData: boolean) {
+  return Boolean(legacyOwnerId && legacyHasFinancialData && !localHasFinancialData && legacyOwnerId !== currentLocalId);
+}
+
 /**
  * Uses the existing owner record when an installation changes from an OAuth
  * identity to a local one. Foreign keys keep pointing to the same numeric user
  * id, so no financial row is copied, deleted or reassigned.
  */
-export async function ensureLocalFinanceOwner(openId: string, displayName: string): Promise<void> {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot initialize the local finance owner: database not available");
-    return;
-  }
-
+export async function ensureLocalFinanceOwnerWithDb(db: FinanceDatabase, openId: string, displayName: string): Promise<void> {
   const currentLocal = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   const legacyOwner = await db
     .select()
@@ -124,7 +122,9 @@ export async function ensureLocalFinanceOwner(openId: string, displayName: strin
     .limit(1);
   const candidate = legacyOwner[0];
 
-  if (candidate && await hasFinancialData(candidate.id)) {
+  const localHasFinancialData = currentLocal[0] ? await hasFinancialData(db, currentLocal[0].id) : false;
+  const legacyHasFinancialData = candidate ? await hasFinancialData(db, candidate.id) : false;
+  if (shouldClaimLegacyFinanceOwner(currentLocal[0]?.id, candidate?.id, localHasFinancialData, legacyHasFinancialData)) {
     await db.transaction(async tx => {
       const temporaryLocal = currentLocal[0];
       if (temporaryLocal) {
@@ -156,6 +156,15 @@ export async function ensureLocalFinanceOwner(openId: string, displayName: strin
     loginMethod: "local",
     lastSignedIn: new Date(),
   });
+}
+
+export async function ensureLocalFinanceOwner(openId: string, displayName: string): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot initialize the local finance owner: database not available");
+    return;
+  }
+  await ensureLocalFinanceOwnerWithDb(db, openId, displayName);
 }
 
 // TODO: add feature queries here as your schema grows.

@@ -6,6 +6,8 @@ La exportación JSON guarda tanto la planificación como el estado operativo de 
 
 > Una restauración debe recuperar el **estado actual** de los saldos y de la liquidación mensual, no solo las partidas planificadas. Para trasladar la aplicación a otra instalación, importa el JSON en una base inicialmente vacía o previamente revisada para evitar duplicar conceptos existentes.
 
+Cuando se sustituye un método de acceso, el registro local que ya contiene una copia restaurada es el propietario canónico de los datos. Solo se intenta adoptar un propietario histórico cuando el acceso local todavía está vacío y el usuario histórico autorizado dispone de datos financieros; esto evita crear o mantener un espacio vacío sin afectar una restauración ya realizada.
+
 La aplicación conserva el historial financiero siempre que sea razonable. La eliminación física solo se reserva para elementos corregibles que no representan una obligación o una posición patrimonial a largo plazo.
 
 | Entidad | Acción habitual para dejar de usarla | Conservación de histórico | Efecto en nuevos balances |
