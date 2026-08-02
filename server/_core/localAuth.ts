@@ -75,13 +75,7 @@ export function registerLocalAuthRoutes(app: Express) {
     attempts.delete(key);
     const displayName = ENV.localAuthUsername;
     const openId = `local:${ENV.localAuthUsername.toLowerCase()}`;
-    await db.upsertUser({
-      openId,
-      name: displayName,
-      email: null,
-      loginMethod: "local",
-      lastSignedIn: new Date(),
-    });
+    await db.ensureLocalFinanceOwner(openId, displayName);
 
     const sessionToken = await sdk.createSessionToken(openId, { name: displayName, expiresInMs: ONE_YEAR_MS });
     res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });

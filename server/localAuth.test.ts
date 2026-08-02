@@ -7,7 +7,7 @@ import { sdk } from "./_core/sdk";
 import type { TrpcContext } from "./_core/context";
 import { appRouter } from "./routers";
 
-vi.mock("./db", () => ({ upsertUser: vi.fn() }));
+vi.mock("./db", () => ({ ensureLocalFinanceOwner: vi.fn() }));
 vi.mock("./_core/sdk", () => ({ sdk: { createSessionToken: vi.fn() } }));
 
 let closeServer: (() => Promise<void>) | null = null;
@@ -21,7 +21,7 @@ afterEach(async () => {
 
 describe("local authentication endpoint", () => {
   it("accepts the configured local credentials and creates a session cookie", async () => {
-    vi.mocked(db.upsertUser).mockResolvedValue(undefined);
+    vi.mocked(db.ensureLocalFinanceOwner).mockResolvedValue(undefined);
     vi.mocked(sdk.createSessionToken).mockResolvedValue("local-session-token");
 
     const app = express();
@@ -45,7 +45,7 @@ describe("local authentication endpoint", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ success: true, user: process.env.LOCAL_AUTH_USERNAME });
-    expect(db.upsertUser).toHaveBeenCalledWith(expect.objectContaining({ loginMethod: "local" }));
+    expect(db.ensureLocalFinanceOwner).toHaveBeenCalledWith("local:juanlu", process.env.LOCAL_AUTH_USERNAME);
     expect(response.headers.get("set-cookie")).toContain("session");
   });
 
@@ -68,7 +68,7 @@ describe("local authentication endpoint", () => {
 
     expect(response.status).toBe(401);
     expect(response.headers.get("set-cookie")).toBeNull();
-    expect(db.upsertUser).not.toHaveBeenCalled();
+    expect(db.ensureLocalFinanceOwner).not.toHaveBeenCalled();
   });
 
   it("limits repeated failed login attempts", async () => {

@@ -73,6 +73,16 @@
 - [x] Añadir protección contra intentos repetidos y pruebas de acceso válido, inválido y sesión cerrada.
 - [x] Actualizar la documentación de despliegue para usar las variables de acceso local en el VPS.
 - [x] Añadir una prueba de cierre de sesión local que compruebe el borrado de cookie y el regreso a estado no autenticado.
+- [ ] Diagnosticar la identidad propietaria de los datos financieros existentes tras el acceso local.
+- [ ] Vincular el acceso local al usuario propietario de los datos sin crear un espacio financiero vacío.
+- [ ] Añadir una prueba de regresión que garantice que el acceso local conserva los datos del propietario existente.
+- [ ] Migrar automáticamente en producción el usuario de datos existente al identificador local antes de crear un espacio vacío.
+- [ ] Verificar desde el dominio publicado que el usuario local recupera cuentas, préstamos y movimientos existentes.
+- [x] Exportar e importar todas las liquidaciones mensuales con su estado, importe previsto, importe real, fecha y cuenta asociada.
+- [x] Restaurar las liquidaciones usando referencias estables a las cuentas importadas sin convertir conceptos pagados o cobrados en pendientes.
+- [x] Añadir una prueba de ida y vuelta de copia de seguridad que preserve pagos, cobros, saldos y el estado mensual exacto.
+- [x] Añadir una prueba completa de exportación→importación con liquidaciones ya realizadas y un destino de restauración independiente.
+- [x] Verificar en la prueba de copia completa los saldos, cuentas asociadas, importes previstos y reales, y el estado mensual restaurado.
 - [x] Añadir una visualización de distribución de ingresos por categoría en la pantalla de informes.
 - [x] Implementar importación manual validada de datos de finanzas en formato JSON portable.
 - [x] Crear pruebas para los procedimientos financieros principales, incluido el resumen mensual, tendencias y exportación.

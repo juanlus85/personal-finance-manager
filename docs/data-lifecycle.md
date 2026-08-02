@@ -1,5 +1,11 @@
 # Ciclo de vida de los datos financieros
 
+## Copias de seguridad con estado operativo
+
+La exportación JSON guarda tanto la planificación como el estado operativo de cada mes. Para cada concepto ya liquidado conserva el tipo de concepto, el importe previsto, el importe real confirmado, la diferencia entre ambos, la fecha de cobro o pago y la cuenta afectada. Durante la importación, las cuentas y conceptos reciben identificadores nuevos cuando es necesario; la restauración vuelve a enlazar las liquidaciones con esos nuevos identificadores para que un cobro o pago no vuelva a aparecer como pendiente.
+
+> Una restauración debe recuperar el **estado actual** de los saldos y de la liquidación mensual, no solo las partidas planificadas. Para trasladar la aplicación a otra instalación, importa el JSON en una base inicialmente vacía o previamente revisada para evitar duplicar conceptos existentes.
+
 La aplicación conserva el historial financiero siempre que sea razonable. La eliminación física solo se reserva para elementos corregibles que no representan una obligación o una posición patrimonial a largo plazo.
 
 | Entidad | Acción habitual para dejar de usarla | Conservación de histórico | Efecto en nuevos balances |

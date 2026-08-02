@@ -166,6 +166,39 @@ describe("finance router", () => {
     expect(exported.data.loans).toEqual([]);
   });
 
+  it("round-trips balances and settled concepts through an exported portable backup", async () => {
+    const source = createSequencedDatabase([
+      [{ id: 1, userId: 7, name: "Gastos", direction: "expense", color: "#4C7A68", icon: null, isActive: true }],
+      [{ id: 2, userId: 7, name: "BBVA", type: "bank", currency: "EUR", institution: null, includeInLiquidity: true, notes: null, isActive: true }],
+      [{ id: 3, accountId: 2, balance: "5468.44", recordedOn: "2026-08-02", note: "Saldo liquidado" }],
+      [],
+      [{ id: 5, userId: 7, name: "Préstamo", lender: null, currency: "EUR", originalPrincipal: "1000.00", currentPrincipal: "800.00", annualInterestRate: "2.00000", monthlyPayment: "100.00", paymentDay: 1, startDate: "2026-01-01", endDate: "2026-12-31", amortizationMethod: "manual", status: "active", notes: null }],
+      [], [],
+      [{ id: 6, userId: 7, concept: "Financiación", provider: null, currency: "EUR", monthlyAmount: "80.00", totalAmount: "800.00", paymentDay: 1, startDate: "2026-01-01", endDate: "2026-12-31", status: "active", notes: null }],
+      [{ id: 7, userId: 7, categoryId: 1, accountId: 2, name: "Recibo", direction: "expense", kind: "recurring_bill", certainty: "confirmed", currency: "EUR", amount: "50.00", dayOfMonth: 1, startDate: "2026-01-01", endDate: null, notes: null, isActive: true }],
+      [{ id: 8, userId: 7, categoryId: 1, accountId: 2, description: "Carrefour", direction: "expense", kind: "card_expense", certainty: "confirmed", currency: "EUR", amount: "833.00", exchangeRateToEur: null, effectiveDate: "2026-08-02", notes: null }],
+      [{ id: 9, userId: 7, month: "2026-08", conceptId: "transaction-8", source: "card_expense", description: "Carrefour", direction: "expense", certainty: "confirmed", currency: "EUR", plannedAmount: "833.00", plannedAmountEur: "833.00", amount: "810.00", amountEur: "810.00", accountId: 2, status: "settled", settledOn: "2026-08-02" }],
+      [],
+    ]);
+    vi.mocked(getDb).mockResolvedValue(source as never);
+    const exported = await appRouter.createCaller(createContext()).finance.exportData();
+    const { database: target, inserted } = createWritableDatabase([[], []]);
+    vi.mocked(getDb).mockResolvedValue(target as never);
+
+    await appRouter.createCaller(createContext()).finance.importData({ backup: exported });
+
+    expect(inserted.find(value => value.recordedOn === "2026-08-02")).toMatchObject({ accountId: 102, balance: "5468.44", note: "Saldo liquidado" });
+    expect(inserted.find(value => value.conceptId === "transaction-107")).toMatchObject({
+      accountId: 102,
+      status: "settled",
+      settledOn: "2026-08-02",
+      plannedAmount: "833.00",
+      plannedAmountEur: "833.00",
+      amount: "810.00",
+      amountEur: "810.00",
+    });
+  });
+
   it("rejects an invalid backup before opening a database transaction", async () => {
     const database = createEmptyDatabase();
     vi.mocked(getDb).mockResolvedValue(database as never);
@@ -233,7 +266,7 @@ describe("finance router", () => {
           categories: [{ id: 1, name: "Trabajo", direction: "income", color: "#4C7A68", icon: null, isActive: true }],
           accounts: [{ id: 1, name: "Banco principal", type: "bank", currency: "EUR", institution: null, includeInLiquidity: true, notes: null, isActive: true }],
           accountBalanceSnapshots: [], exchangeRates: [], loans: [], loanFeatures: [], loanInstallments: [], financings: [], recurringTransactions: [],
-          transactions: [{ categoryId: 1, accountId: 1, description: "Ingreso restaurado", direction: "income", kind: "extra_income", certainty: "confirmed", currency: "EUR", amount: 100, exchangeRateToEur: null, effectiveDate: "2026-07-01", notes: null }],
+          transactions: [{ id: 99, categoryId: 1, accountId: 1, description: "Ingreso restaurado", direction: "income", kind: "extra_income", certainty: "confirmed", currency: "EUR", amount: 100, exchangeRateToEur: null, effectiveDate: "2026-07-01", notes: null }],
           monthlyConceptSettlements: [{ month: "2026-07", conceptId: "transaction-99", source: "card_forecast", description: "Amex · pago previsto", direction: "expense", certainty: "confirmed", currency: "EUR", plannedAmount: 180, plannedAmountEur: 180, amount: 175, amountEur: 175, accountId: 1, status: "settled", settledOn: "2026-07-05" }],
           debts: [],
         },
@@ -242,7 +275,38 @@ describe("finance router", () => {
 
     expect(result).toMatchObject({ success: true, imported: { categories: 0, accounts: 0, transactions: 1 } });
     expect(inserted.find(value => value.description === "Ingreso restaurado")).toMatchObject({ categoryId: 55, accountId: 77, userId: 7 });
-    expect(inserted.find(value => value.conceptId === "transaction-99")).toMatchObject({ userId: 7, source: "card_forecast", plannedAmount: "180.00", amount: "175.00", accountId: 77 });
+    expect(inserted.find(value => value.conceptId === "transaction-101")).toMatchObject({ userId: 7, source: "card_forecast", plannedAmount: "180.00", amount: "175.00", accountId: 77, status: "settled", settledOn: "2026-07-05" });
+  });
+
+  it("preserves settled states when every source concept receives a new imported id", async () => {
+    const { database, inserted } = createWritableDatabase([[], []]);
+    vi.mocked(getDb).mockResolvedValue(database as never);
+    const caller = appRouter.createCaller(createContext());
+    const settled = (conceptId: string, source: "loan" | "financing" | "recurring" | "card_expense") => ({
+      month: "2026-08", conceptId, source, description: `Liquidación ${source}`, direction: "expense" as const,
+      certainty: "confirmed" as const, currency: "EUR" as const, plannedAmount: 100, plannedAmountEur: 100,
+      amount: 95, amountEur: 95, accountId: 1, status: "settled" as const, settledOn: "2026-08-02",
+    });
+
+    await caller.finance.importData({
+      backup: {
+        format: "lumen-finanzas-export", version: 1,
+        data: {
+          categories: [{ id: 1, name: "Fijos", direction: "expense", color: "#4C7A68", icon: null, isActive: true }],
+          accounts: [{ id: 1, name: "Cuenta restaurada", type: "bank", currency: "EUR", institution: null, includeInLiquidity: true, notes: null, isActive: true }],
+          accountBalanceSnapshots: [], exchangeRates: [], loanFeatures: [], loanInstallments: [], debts: [],
+          loans: [{ id: 5, name: "Préstamo restaurado", lender: null, currency: "EUR", originalPrincipal: 1000, currentPrincipal: 800, annualInterestRate: 2, monthlyPayment: 100, paymentDay: 1, startDate: "2026-01-01", endDate: "2026-12-31", amortizationMethod: "manual", status: "active", notes: null }],
+          financings: [{ id: 6, concept: "Financiación restaurada", provider: null, currency: "EUR", monthlyAmount: 100, totalAmount: 1000, paymentDay: 1, startDate: "2026-01-01", endDate: "2026-12-31", status: "active", notes: null }],
+          recurringTransactions: [{ id: 7, categoryId: 1, accountId: 1, name: "Recibo restaurado", direction: "expense", kind: "recurring_bill", certainty: "confirmed", currency: "EUR", amount: 100, dayOfMonth: 1, startDate: "2026-01-01", endDate: null, notes: null, isActive: true }],
+          transactions: [{ id: 8, categoryId: 1, accountId: 1, description: "Tarjeta restaurada", direction: "expense", kind: "card_expense", certainty: "confirmed", currency: "EUR", amount: 100, exchangeRateToEur: null, effectiveDate: "2026-08-02", notes: null }],
+          monthlyConceptSettlements: [settled("loan-5", "loan"), settled("financing-6", "financing"), settled("recurring-7", "recurring"), settled("transaction-8", "card_expense")],
+        },
+      },
+    });
+
+    const restoredSettlements = inserted.filter(value => typeof value.conceptId === "string");
+    expect(restoredSettlements.map(value => value.conceptId)).toEqual(["loan-103", "financing-104", "recurring-105", "transaction-106"]);
+    expect(restoredSettlements.every(value => value.status === "settled" && value.accountId === 102 && value.amount === "95.00")).toBe(true);
   });
 
   it("writes the core finance entities under the authenticated user", async () => {
