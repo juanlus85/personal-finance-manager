@@ -22,3 +22,7 @@ Las rutas de visión general, movimientos, informes y configuración se verifica
 La revisión de escritorio confirma que la pantalla de **Ingresos y gastos** presenta accesos diferenciados para **BBVA**, **Amex**, **Carrefour** y **El Corte Inglés**, junto con los controles de **Ingreso** y **Gasto** posibles. El resumen mensual ahora presenta bloques separados para ingresos confirmados, gastos previstos, ingresos posibles y gastos posibles. La ruta directa `/resumen` muestra correctamente el balance mensual tras añadir su alias. La pantalla de liquidación conserva los paneles de disponible, pendientes y acciones de cobro o pago sin problemas visuales actuales.
 
 La verificación a **375 × 812 px** confirma que los controles de previsión de tarjetas se adaptan de forma apilada, los selectores de periodo se mantienen utilizables y las tarjetas de escenario y liquidación conservan legibilidad sin desbordamiento horizontal visible.
+
+## Movimientos corrientes
+
+La nueva sección se comprobó en escritorio y en **375 × 812 px**. En escritorio, el formulario rápido, los indicadores de ingresos y gastos registrados y el historial se distribuyen en una composición de dos columnas legible. En móvil, el contenido se reordena en una sola columna, empieza desde la parte superior y mantiene visibles los campos de fecha, cuenta, concepto, importe y notas sin desbordamiento horizontal.

@@ -20,7 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { BadgeEuro, Building2, ChartNoAxesCombined, CircleAlert, CircleCheckBig, CreditCard, Landmark, LayoutDashboard, Loader2, LogOut, PanelLeft, Settings2, WalletCards } from "lucide-react";
+import { ArrowLeftRight, BadgeEuro, Building2, ChartNoAxesCombined, CircleAlert, CircleCheckBig, CreditCard, Landmark, LayoutDashboard, Loader2, LogOut, PanelLeft, Settings2, WalletCards } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -33,6 +33,7 @@ const menuItems = [
   { icon: WalletCards, label: "Resumen mensual", path: "/mensual" },
   { icon: CircleCheckBig, label: "Liquidar mes", path: "/liquidacion" },
   { icon: CreditCard, label: "Ingresos y gastos", path: "/movimientos" },
+  { icon: ArrowLeftRight, label: "Movimientos corrientes", path: "/corrientes" },
   { icon: Landmark, label: "Préstamos", path: "/prestamos" },
   { icon: Building2, label: "Cuentas y deudas", path: "/cuentas" },
   { icon: ChartNoAxesCombined, label: "Informes", path: "/informes" },

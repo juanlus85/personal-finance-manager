@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AccountsPage from "./pages/Accounts";
+import CurrentMovementsPage from "./pages/CurrentMovements";
 import Home from "./pages/Home";
 import LoansPage from "./pages/Loans";
 import MonthlyPage from "./pages/Monthly";
@@ -22,6 +23,7 @@ function Router() {
       <Route path={"/resumen"} component={MonthlyPage} />
       <Route path={"/liquidacion"} component={SettlementPage} />
       <Route path={"/movimientos"} component={MovementsPage} />
+      <Route path={"/corrientes"} component={CurrentMovementsPage} />
       <Route path={"/prestamos"} component={LoansPage} />
       <Route path={"/cuentas"} component={AccountsPage} />
       <Route path={"/informes"} component={ReportsPage} />

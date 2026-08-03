@@ -219,6 +219,15 @@ const transactionInput = z.object({
   notes: nullableText(4_000),
 });
 
+const currentMovementInput = z.object({
+  date: dateSchema,
+  accountId: z.number().int().positive(),
+  description: z.string().trim().min(1).max(220),
+  direction: directionSchema,
+  amount: moneySchema,
+  notes: nullableText(4_000),
+});
+
 const settlementInput = z.object({
   month: monthSchema,
   conceptId: z.string().regex(/^(recurring|loan|financing|transaction)-\d+$/),
@@ -601,6 +610,133 @@ export const financeRouter = router({
     remove: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDatabase();
       await db.delete(transactions).where(and(eq(transactions.id, input.id), eq(transactions.userId, ctx.user.id)));
+      return { success: true };
+    }),
+  }),
+
+  currentMovements: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const db = await requireDatabase();
+      return db.select({
+        id: transactions.id,
+        accountId: transactions.accountId,
+        accountName: accounts.name,
+        currency: transactions.currency,
+        description: transactions.description,
+        direction: transactions.direction,
+        amount: transactions.amount,
+        effectiveDate: transactions.effectiveDate,
+        notes: transactions.notes,
+        createdAt: transactions.createdAt,
+      }).from(transactions).innerJoin(accounts, eq(transactions.accountId, accounts.id)).where(and(
+        eq(transactions.userId, ctx.user.id),
+        inArray(transactions.kind, ["manual_income", "manual_expense"]),
+      )).orderBy(desc(transactions.effectiveDate), desc(transactions.id));
+    }),
+    record: protectedProcedure.input(currentMovementInput).mutation(async ({ ctx, input }) => {
+      const db = await requireDatabase();
+      const account = await db.select({ id: accounts.id, currency: accounts.currency }).from(accounts).where(and(
+        eq(accounts.id, input.accountId),
+        eq(accounts.userId, ctx.user.id),
+        eq(accounts.isActive, true),
+      )).limit(1);
+      if (account.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "La cuenta seleccionada no está disponible." });
+
+      const currency = account[0].currency;
+      const rateRows = currency === "USD"
+        ? await db.select({ rate: exchangeRates.rate, effectiveOn: exchangeRates.effectiveOn }).from(exchangeRates).where(and(
+          eq(exchangeRates.userId, ctx.user.id),
+          eq(exchangeRates.fromCurrency, "USD"),
+          lte(exchangeRates.effectiveOn, input.date),
+        )).orderBy(desc(exchangeRates.effectiveOn)).limit(1)
+        : [];
+      const rate = currency === "EUR" ? 1 : numberValue(rateRows[0]?.rate);
+      const amountEur = rate > 0 ? roundMoney(input.amount * rate) : null;
+      const snapshotDate = todayInSpain();
+      const kind = input.direction === "income" ? "manual_income" as const : "manual_expense" as const;
+      const delta = input.direction === "income" ? input.amount : -input.amount;
+
+      const transactionId = await db.transaction(async tx => {
+        const latestSnapshot = await tx.select({ balance: accountBalanceSnapshots.balance }).from(accountBalanceSnapshots).where(eq(accountBalanceSnapshots.accountId, input.accountId)).orderBy(desc(accountBalanceSnapshots.recordedOn), desc(accountBalanceSnapshots.id)).limit(1);
+        const nextBalance = roundMoney(numberValue(latestSnapshot[0]?.balance) + delta);
+        const inserted = await tx.insert(transactions).values({
+          userId: ctx.user.id,
+          categoryId: null,
+          accountId: input.accountId,
+          description: input.description,
+          direction: input.direction,
+          kind,
+          certainty: "confirmed",
+          currency,
+          amount: input.amount.toFixed(2),
+          exchangeRateToEur: currency === "USD" && rate > 0 ? rate.toFixed(8) : null,
+          effectiveDate: input.date,
+          notes: nullableValue(input.notes),
+        });
+        const id = Number(inserted[0].insertId);
+        await tx.insert(monthlyConceptSettlements).values({
+          userId: ctx.user.id,
+          month: input.date.slice(0, 7),
+          conceptId: `transaction-${id}`,
+          source: kind,
+          description: input.description,
+          direction: input.direction,
+          certainty: "confirmed",
+          currency,
+          plannedAmount: input.amount.toFixed(2),
+          plannedAmountEur: amountEur === null ? null : amountEur.toFixed(2),
+          amount: input.amount.toFixed(2),
+          amountEur: amountEur === null ? null : amountEur.toFixed(2),
+          accountId: input.accountId,
+          status: "settled",
+          settledOn: snapshotDate,
+        });
+        await tx.insert(accountBalanceSnapshots).values({
+          accountId: input.accountId,
+          balance: nextBalance.toFixed(2),
+          recordedOn: snapshotDate,
+          note: "Actualizado por movimiento corriente",
+        }).onDuplicateKeyUpdate({
+          set: { balance: nextBalance.toFixed(2), note: "Actualizado por movimiento corriente" },
+        });
+        return id;
+      });
+      return { success: true, id: transactionId };
+    }),
+    remove: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const db = await requireDatabase();
+      const record = await db.select({
+        id: transactions.id,
+        accountId: transactions.accountId,
+        direction: transactions.direction,
+        amount: transactions.amount,
+      }).from(transactions).where(and(
+        eq(transactions.id, input.id),
+        eq(transactions.userId, ctx.user.id),
+        inArray(transactions.kind, ["manual_income", "manual_expense"]),
+      )).limit(1);
+      if (record.length === 0 || record[0].accountId === null) throw new TRPCError({ code: "NOT_FOUND", message: "No se encontró el movimiento corriente." });
+
+      const current = record[0];
+      const snapshotDate = todayInSpain();
+      await db.transaction(async tx => {
+        const latestSnapshot = await tx.select({ balance: accountBalanceSnapshots.balance }).from(accountBalanceSnapshots).where(eq(accountBalanceSnapshots.accountId, current.accountId!)).orderBy(desc(accountBalanceSnapshots.recordedOn), desc(accountBalanceSnapshots.id)).limit(1);
+        const reversal = current.direction === "income" ? -numberValue(current.amount) : numberValue(current.amount);
+        const nextBalance = roundMoney(numberValue(latestSnapshot[0]?.balance) + reversal);
+        await tx.insert(accountBalanceSnapshots).values({
+          accountId: current.accountId!,
+          balance: nextBalance.toFixed(2),
+          recordedOn: snapshotDate,
+          note: "Actualizado al revertir un movimiento corriente",
+        }).onDuplicateKeyUpdate({
+          set: { balance: nextBalance.toFixed(2), note: "Actualizado al revertir un movimiento corriente" },
+        });
+        await tx.delete(monthlyConceptSettlements).where(and(
+          eq(monthlyConceptSettlements.userId, ctx.user.id),
+          eq(monthlyConceptSettlements.conceptId, `transaction-${current.id}`),
+        ));
+        await tx.delete(transactions).where(and(eq(transactions.id, current.id), eq(transactions.userId, ctx.user.id)));
+      });
       return { success: true };
     }),
   }),

@@ -42,6 +42,7 @@ function MovementsContent() {
   const transactions = transactionsQuery.data ?? [];
   const recurring = recurringQuery.data ?? [];
   const visibleTransactions = useMemo(() => transactions.filter(item => {
+    if (item.kind === "manual_income" || item.kind === "manual_expense") return false;
     if (segment === "all") return true;
     if (segment === "income") return item.direction === "income";
     return item.direction === "expense";

@@ -83,6 +83,13 @@
 - [x] Añadir una comprobación de migración que impida dejar un usuario local vacío activo cuando exista un propietario histórico con datos.
 - [ ] Añadir una prueba integrada de `/auth/local/login` que conserve el `userId` histórico y sus relaciones cuando el acceso local esté vacío.
 - [ ] Comprobar automáticamente tras iniciar sesión que el usuario local corresponde al propietario esperado o que conserva la copia restaurada ya activa.
+- [x] Diseñar el registro contable de movimientos corrientes como ingresos o gastos ya realizados por cuenta.
+- [x] Implementar altas y reversión segura de movimientos corrientes con fecha, cuenta, concepto, importe y notas.
+- [x] Actualizar inmediatamente el saldo de la cuenta al registrar o revertir un movimiento corriente.
+- [x] Añadir el menú y la pantalla Movimientos Corrientes con un formulario rápido y un historial reversible.
+- [x] Añadir pruebas de movimientos corrientes, saldos por cuenta y protección de datos por usuario.
+- [x] Añadir pruebas de aislamiento por usuario para listar, registrar y revertir Movimientos Corrientes.
+- [x] Verificar que una cuenta o movimiento ajeno no puede afectar saldos desde Movimientos Corrientes.
 - [x] Exportar e importar todas las liquidaciones mensuales con su estado, importe previsto, importe real, fecha y cuenta asociada.
 - [x] Restaurar las liquidaciones usando referencias estables a las cuentas importadas sin convertir conceptos pagados o cobrados en pendientes.
 - [x] Añadir una prueba de ida y vuelta de copia de seguridad que preserve pagos, cobros, saldos y el estado mensual exacto.

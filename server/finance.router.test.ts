@@ -67,6 +67,7 @@ function createScopeInspectingDatabase() {
   const chain = {
     from: () => chain,
     leftJoin: () => chain,
+    innerJoin: () => chain,
     where: (condition: unknown) => { whereCalls.push(condition); return chain; },
     orderBy: () => chain,
     limit: () => chain,
@@ -333,6 +334,54 @@ describe("finance router", () => {
       expect.objectContaining({ userId: 7, description: "Médico posible", kind: "possible_expense", certainty: "possible" }),
       expect.objectContaining({ userId: 7, counterparty: "Tercero" }),
     ]));
+  });
+
+  it("records and reverses a current movement while updating only the selected account balance", async () => {
+    const { database, inserted } = createWritableDatabase([
+      [{ id: 21, currency: "EUR" }],
+      [{ balance: "100.00" }],
+    ]);
+    vi.mocked(getDb).mockResolvedValue(database as never);
+    const caller = appRouter.createCaller(createContext());
+
+    const created = await caller.finance.currentMovements.record({
+      date: "2026-08-03", accountId: 21, description: "Compra corriente", direction: "expense", amount: 15, notes: "Prueba de saldo",
+    });
+
+    expect(created).toMatchObject({ success: true, id: 101 });
+    expect(inserted.find(value => value.description === "Compra corriente")).toMatchObject({ userId: 7, accountId: 21, kind: "manual_expense", amount: "15.00", effectiveDate: "2026-08-03" });
+    expect(inserted.find(value => value.conceptId === "transaction-101")).toMatchObject({ accountId: 21, source: "manual_expense", status: "settled", amount: "15.00" });
+    expect(inserted.find(value => value.note === "Actualizado por movimiento corriente")).toMatchObject({ accountId: 21, balance: "85.00" });
+
+    const removeDatabase = createWritableDatabase([
+      [{ id: 101, accountId: 21, direction: "expense", amount: "15.00" }],
+      [{ balance: "85.00" }],
+    ]);
+    vi.mocked(getDb).mockResolvedValue(removeDatabase.database as never);
+    await caller.finance.currentMovements.remove({ id: 101 });
+    expect(removeDatabase.inserted.find(value => value.note === "Actualizado al revertir un movimiento corriente")).toMatchObject({ accountId: 21, balance: "100.00" });
+    expect(removeDatabase.deleted).toHaveLength(2);
+  });
+
+  it("scopes current movements to the authenticated user and rejects foreign accounts or records", async () => {
+    const { database: scopedDatabase, whereCalls } = createScopeInspectingDatabase();
+    vi.mocked(getDb).mockResolvedValue(scopedDatabase as never);
+    const caller = appRouter.createCaller(createContext());
+    await caller.finance.currentMovements.list();
+    expect(whereCalls.some(condition => containsPrimitive(condition, 7))).toBe(true);
+
+    const foreignAccountDatabase = createWritableDatabase([[]]);
+    vi.mocked(getDb).mockResolvedValue(foreignAccountDatabase.database as never);
+    await expect(caller.finance.currentMovements.record({
+      date: "2026-08-03", accountId: 999, description: "Cuenta ajena", direction: "expense", amount: 10, notes: null,
+    })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(foreignAccountDatabase.inserted).toEqual([]);
+
+    const foreignMovementDatabase = createWritableDatabase([[]]);
+    vi.mocked(getDb).mockResolvedValue(foreignMovementDatabase.database as never);
+    await expect(caller.finance.currentMovements.remove({ id: 999 })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(foreignMovementDatabase.inserted).toEqual([]);
+    expect(foreignMovementDatabase.deleted).toEqual([]);
   });
 
   it("lists accounts, rates, loans, financings, movements and debts for the current user", async () => {
