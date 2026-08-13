@@ -94,12 +94,14 @@
 - [x] Añadir pruebas de aislamiento por usuario para listar, registrar y revertir Movimientos Corrientes.
 - [x] Verificar que una cuenta o movimiento ajeno no puede afectar saldos desde Movimientos Corrientes.
 - [x] Diagnosticar el 404 al abrir directamente la ruta publicada de Movimientos Corrientes.
-- [ ] Configurar una ruta de respaldo SPA para que las URLs internas publicadas no devuelvan 404 (el dominio publicado todavía intercepta las rutas sin fragmento).
+- [x] Documentar la limitación del alojamiento publicado para rutas sin fragmento y aplicar navegación con `#/` como respaldo compatible.
+- [ ] Implementar y verificar un fallback SPA real para rutas limpias en el VPS; Manus Space queda documentado como limitación con `#/` como alternativa.
 - [x] Configurar el enrutado de la interfaz mediante fragmentos URL para que los enlaces internos funcionen aunque el alojamiento no reescriba rutas SPA.
 - [x] Verificar desde el dominio publicado el acceso directo a Movimientos Corrientes y al resumen mensual mediante rutas con fragmento.
 - [x] Reparar de forma persistente la dependencia de iconos corrupta sin depender de cambios manuales en `node_modules`.
 - [x] Fijar de forma reproducible la resolución de `lucide-react` para dependencias directas y transitivas.
-- [ ] Validar la corrección de iconos en una instalación limpia sin enlaces manuales en `node_modules`.
+- [x] Validar la resolución reproducible de iconos mediante lockfile, árbol instalado, compilación y vista previa; la reinstalación íntegra se documentó como limitación del entorno.
+- [ ] Ejecutar una instalación limpia con `pnpm install --frozen-lockfile` en el VPS y registrar la validación reproducible de dependencias.
 - [x] Verificar de nuevo la vista previa tras reconstruir la dependencia directa desde el lockfile sin errores de iconos.
 - [x] Identificar la resolución transitiva histórica de `lucide-react@0.542.0` introducida por `streamdown`.
 - [x] Verificar que el lockfile no mantiene una resolución transitiva activa de `lucide-react@0.542.0` tras aplicar el override.

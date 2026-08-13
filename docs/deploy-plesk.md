@@ -92,3 +92,11 @@ Antes de considerar el despliegue terminado, comprueba lo siguiente:
 - El resumen mensual diferencia el balance confirmado del balance con ingresos posibles.
 - Un préstamo o financiación terminado deja de aparecer en los meses posteriores a su vencimiento.
 - Los gráficos, la exportación JSON y la importación de una copia de prueba funcionan como se espera.
+
+## 8. Rutas internas y verificación de dependencias
+
+El dominio temporal de Manus Space puede interceptar rutas sin fragmento —por ejemplo, `/corrientes`— antes de que la aplicación Node.js reciba la petición. Por ello, durante las pruebas publicadas se utiliza la navegación con fragmentos, como `/#/corrientes` y `/#/mensual`. Esta es una limitación conocida del alojamiento temporal, no una sustitución de la regla de respaldo SPA que debe configurarse en el VPS.
+
+En Plesk, comprueba que el proxy dirige las rutas internas no estáticas a `dist/index.js` o a `index.html` según la configuración de Node.js elegida; solo después valida que `https://finanzas.blancoguzman.es/corrientes` no devuelve 404. El proyecto mantiene además rutas con `#/` como alternativa compatible.
+
+Las dependencias se han validado con el lockfile, el árbol instalado, la compilación, las pruebas y la vista previa. Antes de la instalación definitiva en el VPS, ejecuta `pnpm install --frozen-lockfile` en un directorio limpio para confirmar que la resolución de iconos se reproduce desde cero.
