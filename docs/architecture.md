@@ -18,6 +18,12 @@ El destino de producción será `https://finanzas.blancoguzman.es`. La URL de re
 
 La interfaz se organizará en un panel principal, resumen mensual, ingresos, gastos, préstamos y financiaciones, cuentas y deudas, informes y ajustes. El diseño utilizará una paleta sobria con tonos piedra, tinta, verde profundo y acentos dorados suaves; priorizará jerarquía visual, espacio en blanco, tipografía legible y compatibilidad móvil.
 
+## Integridad de dependencias del cliente
+
+La aplicación fija `lucide-react` como dependencia directa y elimina el renderizador Markdown no utilizado que introducía una segunda versión transitiva de iconos. La configuración de Vite resuelve los iconos desde la dependencia directa del proyecto. El lockfile y el árbol instalado se verifican para asegurar que no exista una resolución activa de la versión transitiva retirada.
+
+La reinstalación completamente limpia depende de que el almacén local de paquetes disponga de todos los tarballs. En este entorno, algunos paquetes ajenos al proyecto no estaban disponibles o no podían escribirse en dicho almacén. Como comprobación equivalente, se regeneró la dependencia directa desde el lockfile, se verificó el árbol resuelto y se ejecutaron comprobación de tipos, compilación, pruebas y vista previa de la aplicación.
+
 ## Referencias de autenticación
 
 La implementación de producción sigue el flujo de autorización de servidor de Google OpenID Connect: genera un estado anti-CSRF y un `nonce`, solicita únicamente los ámbitos `openid`, `email` y `profile`, intercambia el código en el servidor y valida el token de identidad mediante las claves públicas de Google. La decisión final de acceso exige que el correo verificado coincida con la lista permitida.

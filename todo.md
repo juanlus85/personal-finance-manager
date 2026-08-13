@@ -90,6 +90,19 @@
 - [x] Añadir pruebas de movimientos corrientes, saldos por cuenta y protección de datos por usuario.
 - [x] Añadir pruebas de aislamiento por usuario para listar, registrar y revertir Movimientos Corrientes.
 - [x] Verificar que una cuenta o movimiento ajeno no puede afectar saldos desde Movimientos Corrientes.
+- [x] Diagnosticar el 404 al abrir directamente la ruta publicada de Movimientos Corrientes.
+- [ ] Configurar una ruta de respaldo SPA para que las URLs internas publicadas no devuelvan 404 (el dominio publicado todavía intercepta las rutas sin fragmento).
+- [x] Configurar el enrutado de la interfaz mediante fragmentos URL para que los enlaces internos funcionen aunque el alojamiento no reescriba rutas SPA.
+- [ ] Verificar desde el dominio publicado el acceso directo a Movimientos Corrientes y al resumen mensual.
+- [x] Reparar de forma persistente la dependencia de iconos corrupta sin depender de cambios manuales en `node_modules`.
+- [x] Fijar de forma reproducible la resolución de `lucide-react` para dependencias directas y transitivas.
+- [ ] Validar la corrección de iconos en una instalación limpia sin enlaces manuales en `node_modules`.
+- [x] Verificar de nuevo la vista previa tras reconstruir la dependencia directa desde el lockfile sin errores de iconos.
+- [x] Identificar la resolución transitiva histórica de `lucide-react@0.542.0` introducida por `streamdown`.
+- [x] Verificar que el lockfile no mantiene una resolución transitiva activa de `lucide-react@0.542.0` tras aplicar el override.
+- [x] Eliminar la dependencia no utilizada `streamdown` y su versión transitiva conflictiva de iconos.
+- [x] Documentar la limitación de reinstalación limpia del entorno y la comprobación equivalente sobre lockfile y árbol instalado.
+- [ ] Verificar explícitamente en `financemgr-o5hkzjzk.manus.space` los enlaces internos con la estrategia de fragmentos URL.
 - [x] Exportar e importar todas las liquidaciones mensuales con su estado, importe previsto, importe real, fecha y cuenta asociada.
 - [x] Restaurar las liquidaciones usando referencias estables a las cuentas importadas sin convertir conceptos pagados o cobrados en pendientes.
 - [x] Añadir una prueba de ida y vuelta de copia de seguridad que preserve pagos, cobros, saldos y el estado mensual exacto.

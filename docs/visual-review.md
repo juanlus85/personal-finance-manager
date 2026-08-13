@@ -26,3 +26,9 @@ La verificación a **375 × 812 px** confirma que los controles de previsión de
 ## Movimientos corrientes
 
 La nueva sección se comprobó en escritorio y en **375 × 812 px**. En escritorio, el formulario rápido, los indicadores de ingresos y gastos registrados y el historial se distribuyen en una composición de dos columnas legible. En móvil, el contenido se reordena en una sola columna, empieza desde la parte superior y mantiene visibles los campos de fecha, cuenta, concepto, importe y notas sin desbordamiento horizontal.
+
+## Rutas publicadas
+
+La navegación interna se comprobó con el fragmento `#/corrientes` en escritorio y móvil. Esta variante evita que el alojamiento publicado tenga que resolver rutas internas de la SPA en el servidor. La vista previa volvió a renderizar correctamente tras reparar una copia local corrupta de la dependencia de iconos y regenerar la caché de Vite.
+
+La configuración de Vite ahora resuelve `lucide-react` desde la dependencia directa y versionada del proyecto. Tras reiniciar el entorno, tanto la vista general como `#/corrientes` cargaron de forma estable en la vista previa.

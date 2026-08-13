@@ -1,7 +1,8 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Router as WouterRouter, Switch } from "wouter";
+import { useHashLocation } from "wouter/use-hash-location";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AccountsPage from "./pages/Accounts";
@@ -14,7 +15,7 @@ import ReportsPage from "./pages/Reports";
 import SettlementPage from "./pages/Settlement";
 import SettingsPage from "./pages/Settings";
 
-function Router() {
+function AppRoutes() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
@@ -49,7 +50,9 @@ function App() {
       >
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <WouterRouter hook={useHashLocation}>
+            <AppRoutes />
+          </WouterRouter>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
