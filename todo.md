@@ -51,8 +51,9 @@
 - [x] Permitir editar, eliminar y consultar las previsiones de tarjetas sin registrar los movimientos individuales.
 - [x] Añadir pruebas de balances y transición de mes para movimientos posibles y previsiones de tarjetas.
 - [x] Corregir la ruta del resumen mensual para que el acceso desde navegación y URL directa muestre la pantalla de balance.
-- [ ] Verificar y, si hace falta, corregir el enlace de navegación al resumen mensual para que apunte a una ruta válida.
-- [ ] Comprobar de forma interactiva el acceso desde la navegación hasta el resumen mensual y documentar el resultado.
+- [x] Verificar y, si hace falta, corregir el enlace de navegación al resumen mensual para que apunte a una ruta válida.
+- [x] Comprobar de forma interactiva el acceso desde la navegación hasta el resumen mensual y documentar el resultado.
+- [x] Registrar en la documentación la verificación de navegación hacia `/#/mensual` y `/#/corrientes` sin 404.
 - [x] Diagnosticar por qué un pago liquidado no reduce el saldo disponible de la cuenta seleccionada.
 - [x] Corregir el cálculo y la persistencia de saldos para que cada pago reste y cada cobro sume el importe real liquidado.
 - [ ] Añadir una prueba de regresión del saldo por cuenta tras liquidar un pago desde la interfaz.

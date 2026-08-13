@@ -22,7 +22,7 @@ import {
 import { useIsMobile } from "@/hooks/useMobile";
 import { ArrowLeftRight, BadgeEuro, Building2, ChartNoAxesCombined, CircleAlert, CircleCheckBig, CreditCard, Landmark, LayoutDashboard, Loader2, LogOut, PanelLeft, Settings2, WalletCards } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useHashLocation } from "wouter/use-hash-location";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -131,7 +131,7 @@ function DashboardLayoutContent({
   children,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
-  const [location, setLocation] = useLocation();
+  const [location, setLocation] = useHashLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const activeMenuItem = menuItems.find(item => item.path === location);

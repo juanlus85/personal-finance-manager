@@ -32,3 +32,5 @@ La nueva sección se comprobó en escritorio y en **375 × 812 px**. En escritor
 La navegación interna se comprobó con el fragmento `#/corrientes` en escritorio y móvil. Esta variante evita que el alojamiento publicado tenga que resolver rutas internas de la SPA en el servidor. La vista previa volvió a renderizar correctamente tras reparar una copia local corrupta de la dependencia de iconos y regenerar la caché de Vite.
 
 La configuración de Vite ahora resuelve `lucide-react` desde la dependencia directa y versionada del proyecto. Tras reiniciar el entorno, tanto la vista general como `#/corrientes` cargaron de forma estable en la vista previa.
+
+La navegación lateral se validó de forma interactiva en la vista previa: **Movimientos Corrientes** abrió `#/corrientes` y **Resumen mensual** abrió `#/mensual`, mostrando cada pantalla correspondiente sin carga del servidor ni pantallas 404.
