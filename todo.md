@@ -102,6 +102,18 @@
 - [x] Fijar de forma reproducible la resolución de `lucide-react` para dependencias directas y transitivas.
 - [x] Validar la resolución reproducible de iconos mediante lockfile, árbol instalado, compilación y vista previa; la reinstalación íntegra se documentó como limitación del entorno.
 - [ ] Ejecutar una instalación limpia con `pnpm install --frozen-lockfile` en el VPS y registrar la validación reproducible de dependencias.
+- [x] Auditar el manifiesto, el lockfile, las migraciones y los secretos necesarios para el despliegue en VPS.
+- [x] Crear scripts idempotentes de instalación y actualización mediante `git pull --ff-only`.
+- [x] Configurar y verificar un repositorio privado de GitHub como origen de despliegue del VPS.
+- [x] Completar la guía de Plesk con comandos de primera instalación, actualización, copia de seguridad y reversión.
+- [x] Generar y versionar una migración inicial completa para que el VPS pueda crear el esquema desde cero.
+- [x] Consolidar los overrides y parches de pnpm en el espacio de trabajo para que `pnpm install --frozen-lockfile` sea reproducible sin advertencias.
+- [x] Corregir la sintaxis de package.json tras mover la configuración de pnpm.
+- [x] Resolver o documentar de forma concluyente las advertencias restantes de `pnpm install --frozen-lockfile` y revalidar la instalación de VPS.
+- [x] Retirar el plugin de localización JSX incompatible con Vite 7 para eliminar su advertencia de peer dependency.
+- [x] Reejecutar `pnpm install --frozen-lockfile` tras documentar las advertencias no bloqueantes y registrar la validación de VPS.
+- [ ] Ejecutar `pnpm install --frozen-lockfile` y los scripts de instalación o actualización en el VPS real, registrando el resultado del despliegue.
+- [x] Diferenciar en la documentación las validaciones locales previas al VPS de las comprobaciones efectuadas ya en producción.
 - [x] Verificar de nuevo la vista previa tras reconstruir la dependencia directa desde el lockfile sin errores de iconos.
 - [x] Identificar la resolución transitiva histórica de `lucide-react@0.542.0` introducida por `streamdown`.
 - [x] Verificar que el lockfile no mantiene una resolución transitiva activa de `lucide-react@0.542.0` tras aplicar el override.

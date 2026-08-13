@@ -46,11 +46,10 @@ nano .env
 
 En el archivo `.env` nuevo, configura los valores descritos en `docs/environment-reference.md`. No copies secretos en el historial de terminal ni los incluyas en archivos versionados.
 
-Después, genera el esquema y compila el proyecto:
+Después, ejecuta el script de primera instalación. Este usa el lockfile, aplica las migraciones ya versionadas y genera los activos de producción:
 
 ```bash
-pnpm db:push
-pnpm build
+bash scripts/vps-install.sh
 ```
 
 En la extensión **Node.js** de Plesk, selecciona Node.js 23.11.1, establece `NODE_ENV=production`, define `Application startup file` como `dist/index.js`, confirma el directorio raíz de la aplicación y pulsa **Restart App**. Plesk proporciona el puerto mediante `PORT`; la aplicación lo utiliza automáticamente.
@@ -61,14 +60,10 @@ Antes de actualizar, realiza una copia de seguridad de MySQL y descarga una expo
 
 ```bash
 cd /var/www/vhosts/blancoguzman.es/finanzas
-git pull --ff-only
-corepack enable
-pnpm install --frozen-lockfile
-pnpm db:push
-pnpm build
+bash scripts/vps-update.sh
 ```
 
-Actualiza `VITE_APP_VERSION` y `VITE_BUILD_DATE` en `.env` antes de cada reconstrucción; después reinicia la aplicación desde Plesk. El panel mostrará la versión y la fecha configuradas para facilitar la verificación posterior.
+El script se detiene si detecta cambios locales, utiliza `git pull --ff-only`, instala las dependencias bloqueadas, aplica migraciones y compila. Actualiza `VITE_APP_VERSION` y `VITE_BUILD_DATE` en `.env` antes de cada reconstrucción; después reinicia la aplicación desde Plesk. El panel mostrará la versión y la fecha configuradas para facilitar la verificación posterior.
 
 ## 6. Copias de seguridad y recuperación
 
@@ -99,4 +94,10 @@ El dominio temporal de Manus Space puede interceptar rutas sin fragmento —por 
 
 En Plesk, comprueba que el proxy dirige las rutas internas no estáticas a `dist/index.js` o a `index.html` según la configuración de Node.js elegida; solo después valida que `https://finanzas.blancoguzman.es/corrientes` no devuelve 404. El proyecto mantiene además rutas con `#/` como alternativa compatible.
 
-Las dependencias se han validado con el lockfile, el árbol instalado, la compilación, las pruebas y la vista previa. Antes de la instalación definitiva en el VPS, ejecuta `pnpm install --frozen-lockfile` en un directorio limpio para confirmar que la resolución de iconos se reproduce desde cero.
+### Validación local previa al VPS
+
+Las dependencias se han validado localmente con el lockfile, el árbol instalado, la compilación, las pruebas y la vista previa. Antes de la instalación definitiva en el VPS, ejecuta `pnpm install --frozen-lockfile` en un directorio limpio para confirmar que la resolución de iconos se reproduce desde cero.
+
+La validación actual de `pnpm install --frozen-lockfile` termina correctamente sin advertencias de peer dependencies ni scripts de compilación omitidos. Puede mostrar avisos no bloqueantes sobre versiones de dependencias obsoletas, como Recharts 2 y algunos subárboles de herramientas de desarrollo; no impiden la instalación, las migraciones, las pruebas ni la compilación. Se revisarán en una futura actualización de dependencias mayor, no durante el despliegue inicial.
+
+> **Pendiente en VPS:** la primera ejecución real de `bash scripts/vps-install.sh` y, posteriormente, de `bash scripts/vps-update.sh` deberá anotarse como comprobación de producción. Hasta entonces, las validaciones anteriores son preparación local y no una certificación del servidor final.
