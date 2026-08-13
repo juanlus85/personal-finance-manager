@@ -38,7 +38,7 @@
 - [x] Corregir el límite de fecha del diálogo de liquidación para respetar la duración real de cada mes.
 - [x] Corregir los botones Cobrar, Pagar y Confirmar y cobrar para que abran y ejecuten la liquidación del concepto.
 - [x] Añadir una prueba de interfaz o de flujo que detecte la apertura del diálogo de liquidación desde cada acción.
-- [ ] Ejecutar una prueba interactiva completa de liquidación desde la interfaz y verificar el cambio de estado y disponible.
+- [x] Ejecutar una prueba interactiva completa de liquidación desde la interfaz y verificar el cambio de estado y disponible.
 - [ ] Verificar que Confirmar y cobrar abre el diálogo y que el envío de la interfaz invoca la liquidación correctamente.
 - [x] Corregir la validación de identificadores para permitir liquidar movimientos puntuales de tarjeta, ingresos y gastos.
 - [x] Permitir editar el importe real cobrado o pagado antes de liquidar un concepto.
@@ -56,18 +56,20 @@
 - [x] Registrar en la documentación la verificación de navegación hacia `/#/mensual` y `/#/corrientes` sin 404.
 - [x] Diagnosticar por qué un pago liquidado no reduce el saldo disponible de la cuenta seleccionada.
 - [x] Corregir el cálculo y la persistencia de saldos para que cada pago reste y cada cobro sume el importe real liquidado.
-- [ ] Añadir una prueba de regresión del saldo por cuenta tras liquidar un pago desde la interfaz.
+- [x] Añadir una prueba de regresión del saldo por cuenta tras liquidar un pago desde la interfaz.
 - [x] Hacer que los cobros y pagos liquidados actualicen inmediatamente la cuenta elegida aunque su fecha prevista sea futura.
 - [x] Verificar que la fecha prevista no excluya del disponible una liquidación ya confirmada.
-- [ ] Completar una prueba interactiva E2E de liquidación desde la interfaz verificando cambio de estado, disponible y limpieza final de registros temporales.
+- [x] Completar una prueba interactiva E2E de liquidación desde la interfaz verificando cambio de estado, disponible y limpieza final de registros temporales.
 - [x] Añadir pruebas del router y del resumen para importes ajustados que verifiquen disponibilidad por cuenta, historial y copia de seguridad.
 - [x] Añadir una prueba específica de previsiones de tarjeta para el mes futuro seleccionado y su presencia en resumen, liquidación e informes.
 - [x] Añadir pruebas de transición de mes para gastos posibles y previsiones de tarjetas.
 - [x] Añadir una prueba de informes que confirme la presencia de una previsión de tarjeta en el mes futuro correspondiente.
-- [ ] Realizar una comprobación autenticada de cobro o pago que confirme visualmente la actualización inmediata del disponible.
+- [x] Realizar una comprobación autenticada de cobro o pago que confirme visualmente la actualización inmediata del disponible.
+- [ ] Añadir una prueba de interfaz/E2E que registre un concepto temporal, lo liquide desde Liquidar mes y verifique el saldo por cuenta y el disponible visibles en la UI.
+- [ ] Repetir la prueba interactiva completa de liquidación y completar la reversión o limpieza desde la propia interfaz, sin SQL manual.
 - [x] Diagnosticar el retorno 404 que aparece tras iniciar sesión en el dominio publicado.
 - [x] Corregir la URL de retorno de autenticación y las rutas necesarias para el dominio publicado (sustituido por acceso local).
-- [ ] Validar que el usuario local autorizado puede acceder al dominio publicado sin errores.
+- [x] Validar que el usuario local autorizado puede acceder al dominio publicado sin errores.
 - [x] Configurar el cliente OAuth de Google y las variables de producción requeridas para el acceso directo publicado (requisito sustituido por acceso local).
 - [x] Sustituir Google OAuth por una autenticación local de usuario único con contraseña almacenada como secreto.
 - [x] Crear una pantalla de acceso local accesible y retirar las referencias visuales al inicio con Google.
@@ -94,7 +96,7 @@
 - [x] Diagnosticar el 404 al abrir directamente la ruta publicada de Movimientos Corrientes.
 - [ ] Configurar una ruta de respaldo SPA para que las URLs internas publicadas no devuelvan 404 (el dominio publicado todavía intercepta las rutas sin fragmento).
 - [x] Configurar el enrutado de la interfaz mediante fragmentos URL para que los enlaces internos funcionen aunque el alojamiento no reescriba rutas SPA.
-- [ ] Verificar desde el dominio publicado el acceso directo a Movimientos Corrientes y al resumen mensual.
+- [x] Verificar desde el dominio publicado el acceso directo a Movimientos Corrientes y al resumen mensual mediante rutas con fragmento.
 - [x] Reparar de forma persistente la dependencia de iconos corrupta sin depender de cambios manuales en `node_modules`.
 - [x] Fijar de forma reproducible la resolución de `lucide-react` para dependencias directas y transitivas.
 - [ ] Validar la corrección de iconos en una instalación limpia sin enlaces manuales en `node_modules`.
@@ -103,7 +105,7 @@
 - [x] Verificar que el lockfile no mantiene una resolución transitiva activa de `lucide-react@0.542.0` tras aplicar el override.
 - [x] Eliminar la dependencia no utilizada `streamdown` y su versión transitiva conflictiva de iconos.
 - [x] Documentar la limitación de reinstalación limpia del entorno y la comprobación equivalente sobre lockfile y árbol instalado.
-- [ ] Verificar explícitamente en `financemgr-o5hkzjzk.manus.space` los enlaces internos con la estrategia de fragmentos URL.
+- [x] Verificar explícitamente en `financemgr-o5hkzjzk.manus.space` los enlaces internos con la estrategia de fragmentos URL.
 - [x] Exportar e importar todas las liquidaciones mensuales con su estado, importe previsto, importe real, fecha y cuenta asociada.
 - [x] Restaurar las liquidaciones usando referencias estables a las cuentas importadas sin convertir conceptos pagados o cobrados en pendientes.
 - [x] Añadir una prueba de ida y vuelta de copia de seguridad que preserve pagos, cobros, saldos y el estado mensual exacto.
