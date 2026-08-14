@@ -44,6 +44,8 @@ export type SettlementBalanceLine = BalanceLine & {
 export type MonthlySettlementSummary = {
   pendingConfirmedIncome: number;
   pendingPossibleIncome: number;
+  pendingConfirmedExpenses: number;
+  pendingPossibleExpenses: number;
   pendingExpenses: number;
   settledIncome: number;
   settledExpenses: number;
@@ -53,6 +55,16 @@ export type MonthlySettlementSummary = {
   pendingConcepts: number;
   settledConcepts: number;
   linesWithoutConversion: number;
+};
+
+export type MonthlyFinalProjection = {
+  currentLiquidity: number;
+  pendingConfirmedIncome: number;
+  pendingConfirmedExpenses: number;
+  pendingPossibleIncome: number;
+  pendingPossibleExpenses: number;
+  confirmedFinal: number;
+  finalWithPossible: number;
 };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -183,6 +195,8 @@ export function calculateMonthlyBalances(lines: BalanceLine[]): MonthlyBalanceSu
 export function calculateMonthlySettlement(lines: SettlementBalanceLine[]): MonthlySettlementSummary {
   let pendingConfirmedIncome = 0;
   let pendingPossibleIncome = 0;
+  let pendingConfirmedExpenses = 0;
+  let pendingPossibleExpenses = 0;
   let pendingExpenses = 0;
   let settledIncome = 0;
   let settledExpenses = 0;
@@ -205,7 +219,11 @@ export function calculateMonthlySettlement(lines: SettlementBalanceLine[]): Mont
     }
 
     pendingConcepts += 1;
-    if (line.direction === "expense") pendingExpenses += line.amountEur;
+    if (line.direction === "expense") {
+      pendingExpenses += line.amountEur;
+      if (line.certainty === "possible") pendingPossibleExpenses += line.amountEur;
+      else pendingConfirmedExpenses += line.amountEur;
+    }
     else if (line.certainty === "possible") pendingPossibleIncome += line.amountEur;
     else pendingConfirmedIncome += line.amountEur;
   }
@@ -213,15 +231,38 @@ export function calculateMonthlySettlement(lines: SettlementBalanceLine[]): Mont
   return {
     pendingConfirmedIncome: roundMoney(pendingConfirmedIncome),
     pendingPossibleIncome: roundMoney(pendingPossibleIncome),
+    pendingConfirmedExpenses: roundMoney(pendingConfirmedExpenses),
+    pendingPossibleExpenses: roundMoney(pendingPossibleExpenses),
     pendingExpenses: roundMoney(pendingExpenses),
     settledIncome: roundMoney(settledIncome),
     settledExpenses: roundMoney(settledExpenses),
     settledNet: roundMoney(settledIncome - settledExpenses),
     settledVarianceNet: roundMoney(lines.filter(line => line.settlementStatus === "settled" && line.amountEur !== null && line.settledAmountEur !== null).reduce((total, line) => total + (line.direction === "income" ? line.settledAmountEur! - line.amountEur! : line.amountEur! - line.settledAmountEur!), 0)),
-    pendingNet: roundMoney(pendingConfirmedIncome - pendingExpenses),
+    pendingNet: roundMoney(pendingConfirmedIncome - pendingConfirmedExpenses),
     pendingConcepts,
     settledConcepts,
     linesWithoutConversion,
+  };
+}
+
+export function calculateMonthlyFinalProjection(
+  availableLiquidity: number,
+  settlement: MonthlySettlementSummary,
+): MonthlyFinalProjection {
+  const currentLiquidity = roundMoney(availableLiquidity);
+  const confirmedFinal = roundMoney(
+    currentLiquidity + settlement.pendingConfirmedIncome - settlement.pendingConfirmedExpenses,
+  );
+  return {
+    currentLiquidity,
+    pendingConfirmedIncome: settlement.pendingConfirmedIncome,
+    pendingConfirmedExpenses: settlement.pendingConfirmedExpenses,
+    pendingPossibleIncome: settlement.pendingPossibleIncome,
+    pendingPossibleExpenses: settlement.pendingPossibleExpenses,
+    confirmedFinal,
+    finalWithPossible: roundMoney(
+      confirmedFinal + settlement.pendingPossibleIncome - settlement.pendingPossibleExpenses,
+    ),
   };
 }
 

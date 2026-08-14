@@ -29,6 +29,7 @@ import {
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import {
+  calculateMonthlyFinalProjection,
   calculateMonthlyBalances,
   calculateMonthlySettlement,
   convertToEur,
@@ -1072,6 +1073,7 @@ export const financeRouter = router({
       };
     });
     const availableLiquidity = roundMoney(accountLiquidity.filter(account => account.included).reduce((total, account) => total + Number(account.balanceEur ?? 0), 0));
+    const finalProjection = calculateMonthlyFinalProjection(availableLiquidity, settlement);
 
     const debtSummary = debtRows.map(debt => {
       const amount = numberValue(debt.amount);
@@ -1092,6 +1094,7 @@ export const financeRouter = router({
       balances,
       settlement,
       availableLiquidity,
+      finalProjection,
       lines: reconciledLines,
       expenseBreakdown: groupedByLabel(lines, "expense"),
       incomeBreakdown: groupedByLabel(lines, "income"),

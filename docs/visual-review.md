@@ -34,3 +34,7 @@ La navegación interna se comprobó con el fragmento `#/corrientes` en escritori
 La configuración de Vite ahora resuelve `lucide-react` desde la dependencia directa y versionada del proyecto. Tras reiniciar el entorno, tanto la vista general como `#/corrientes` cargaron de forma estable en la vista previa.
 
 La navegación lateral se validó de forma interactiva en la vista previa: **Movimientos Corrientes** abrió `#/corrientes` y **Resumen mensual** abrió `#/mensual`, mostrando cada pantalla correspondiente sin carga del servidor ni pantallas 404.
+
+## Proyecciones de saldo final
+
+Las pantallas de **Resumen mensual** y **Liquidar mes** muestran dos proyecciones con jerarquía visual clara: **Saldo final confirmado** y **Saldo final con posibles**. Ambas tarjetas exponen la liquidez de partida, los ingresos pendientes y los gastos pendientes que forman el resultado. En Liquidar mes, el bloque de pagos desglosa además importes confirmados y posibles. La composición se comprobó en escritorio y mantiene el lenguaje visual del panel sin sobrecargar las tarjetas superiores.

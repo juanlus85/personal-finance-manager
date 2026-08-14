@@ -113,6 +113,13 @@
 - [x] Retirar el plugin de localización JSX incompatible con Vite 7 para eliminar su advertencia de peer dependency.
 - [x] Reejecutar `pnpm install --frozen-lockfile` tras documentar las advertencias no bloqueantes y registrar la validación de VPS.
 - [ ] Ejecutar `pnpm install --frozen-lockfile` y los scripts de instalación o actualización en el VPS real, registrando el resultado del despliegue.
+- [x] Definir y calcular el saldo final confirmado desde la liquidez actual, ingresos pendientes y gastos pendientes.
+- [x] Definir y calcular el saldo final con posibles incluyendo ingresos y gastos marcados como inciertos.
+- [x] Mostrar ambas proyecciones con su desglose en Resumen mensual.
+- [x] Mostrar ambas proyecciones con su desglose en Liquidar mes y actualizarlas al cobrar o pagar conceptos.
+- [x] Añadir pruebas de las proyecciones con saldos, ingresos pendientes, gastos pendientes y escenarios posibles.
+- [x] Añadir una prueba de router que exponga ambas proyecciones desde `monthlySummary` con liquidez y pendientes reales.
+- [x] Verificar que Liquidar mes refresca `monthlySummary` y las proyecciones tras cobrar o pagar un concepto.
 - [x] Diferenciar en la documentación las validaciones locales previas al VPS de las comprobaciones efectuadas ya en producción.
 - [x] Verificar de nuevo la vista previa tras reconstruir la dependencia directa desde el lockfile sin errores de iconos.
 - [x] Identificar la resolución transitiva histórica de `lucide-react@0.542.0` introducida por `streamdown`.

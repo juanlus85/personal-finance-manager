@@ -569,6 +569,35 @@ describe("finance router", () => {
     expect(summary.lines.every(line => line.settlementStatus === "settled")).toBe(true);
   });
 
+  it("exposes confirmed and possible final projections from current liquidity and pending concepts", async () => {
+    const database = createSequencedDatabase([
+      [], [], [],
+      [
+        { id: 1, accountId: 1, description: "Ingreso confirmado", direction: "income", certainty: "confirmed", kind: "extra_income", currency: "EUR", amount: "200.00", exchangeRateToEur: null, effectiveDate: "2026-07-10", category: "Ingresos" },
+        { id: 2, accountId: 1, description: "Gasto confirmado", direction: "expense", certainty: "confirmed", kind: "extra_bill", currency: "EUR", amount: "500.00", exchangeRateToEur: null, effectiveDate: "2026-07-11", category: "Gastos" },
+        { id: 3, accountId: 1, description: "Ingreso posible", direction: "income", certainty: "possible", kind: "possible_income", currency: "EUR", amount: "120.00", exchangeRateToEur: null, effectiveDate: "2026-07-12", category: "Posibles" },
+        { id: 4, accountId: 1, description: "Gasto posible", direction: "expense", certainty: "possible", kind: "possible_expense", currency: "EUR", amount: "80.00", exchangeRateToEur: null, effectiveDate: "2026-07-13", category: "Posibles" },
+      ],
+      [],
+      [{ id: 1, name: "Banco", type: "bank", currency: "EUR", includeInLiquidity: true }],
+      [{ id: 9, accountId: 1, balance: "2000.00", recordedOn: "2026-07-01", note: null }],
+      [], [],
+    ]);
+    vi.mocked(getDb).mockResolvedValue(database as never);
+
+    const summary = await appRouter.createCaller(createContext()).finance.monthlySummary({ month: "2026-07" });
+
+    expect(summary.finalProjection).toEqual({
+      currentLiquidity: 2000,
+      pendingConfirmedIncome: 200,
+      pendingConfirmedExpenses: 500,
+      pendingPossibleIncome: 120,
+      pendingPossibleExpenses: 80,
+      confirmedFinal: 1700,
+      finalWithPossible: 1740,
+    });
+  });
+
   it("shows a recurring concept as pending again when the following month has no settlement record", async () => {
     const recurringLine = { id: 1, accountId: null, name: "Nómina", direction: "income", certainty: "confirmed", currency: "EUR", amount: "1000.00", category: "Trabajo", startDate: "2026-01-01", endDate: null };
     const database = createSequencedDatabase([

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateMonthlyFinalProjection,
   calculateMonthlyBalances,
   calculateMonthlySettlement,
   generateFrenchAmortizationSchedule,
@@ -70,6 +71,8 @@ describe("financial calculations", () => {
       settledVarianceNet: 35,
       pendingConfirmedIncome: 0,
       pendingPossibleIncome: 300,
+      pendingConfirmedExpenses: 650,
+      pendingPossibleExpenses: 0,
       pendingExpenses: 650,
       pendingConcepts: 2,
       settledConcepts: 2,
@@ -80,5 +83,24 @@ describe("financial calculations", () => {
       { direction: "expense", certainty: "confirmed", amountEur: 650, settlementStatus: "pending" },
     ]);
     expect(followingMonth).toMatchObject({ settledConcepts: 0, pendingConcepts: 2, pendingConfirmedIncome: 2000, pendingExpenses: 650 });
+  });
+
+  it("projects final liquidity separately for confirmed and possible concepts", () => {
+    const settlement = calculateMonthlySettlement([
+      { direction: "income", certainty: "confirmed", amountEur: 200, settlementStatus: "pending" },
+      { direction: "expense", certainty: "confirmed", amountEur: 500, settlementStatus: "pending" },
+      { direction: "income", certainty: "possible", amountEur: 120, settlementStatus: "pending" },
+      { direction: "expense", certainty: "possible", amountEur: 80, settlementStatus: "pending" },
+    ]);
+
+    expect(calculateMonthlyFinalProjection(2000, settlement)).toEqual({
+      currentLiquidity: 2000,
+      pendingConfirmedIncome: 200,
+      pendingConfirmedExpenses: 500,
+      pendingPossibleIncome: 120,
+      pendingPossibleExpenses: 80,
+      confirmedFinal: 1700,
+      finalWithPossible: 1740,
+    });
   });
 });
