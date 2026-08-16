@@ -9,6 +9,7 @@ export const ENV = {
   googleRedirectUri: process.env.GOOGLE_REDIRECT_URI ?? "",
   localAuthUsername: process.env.LOCAL_AUTH_USERNAME ?? "",
   localAuthPassword: process.env.LOCAL_AUTH_PASSWORD ?? "",
+  initialSetupToken: process.env.INITIAL_SETUP_TOKEN ?? "",
   allowedEmail: process.env.ALLOWED_EMAIL ?? "juanlu85@gmail.com",
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",

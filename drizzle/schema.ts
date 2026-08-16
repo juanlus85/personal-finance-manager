@@ -31,6 +31,24 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
+/** Local credentials are stored separately so financial users never expose passwords in exports. */
+export const localCredentials = mysqlTable(
+  "localCredentials",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    username: varchar("username", { length: 80 }).notNull(),
+    passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+    isActive: boolean("isActive").notNull().default(true),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("local_credentials_user_unique").on(table.userId),
+    uniqueIndex("local_credentials_username_unique").on(table.username),
+  ],
+);
+
 export const categories = mysqlTable(
   "categories",
   {
@@ -303,6 +321,7 @@ export const appSettings = mysqlTable(
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+export type LocalCredential = typeof localCredentials.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Account = typeof accounts.$inferSelect;
 export type Loan = typeof loans.$inferSelect;

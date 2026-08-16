@@ -26,9 +26,11 @@ GRANT ALL PRIVILEGES ON finanzas_personales.* TO 'finance_app'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-## 3. Acceso local único
+## 3. Acceso con usuarios persistentes
 
-No es necesario crear ni mantener un cliente de Google OAuth. En el archivo `.env` del VPS define `LOCAL_AUTH_USERNAME` y `LOCAL_AUTH_PASSWORD` junto con un `JWT_SECRET` aleatorio de al menos 32 caracteres. La contraseña se lee únicamente en el servidor, se compara de forma segura y nunca se incluye en el repositorio ni en los activos del navegador.
+No es necesario crear ni mantener un cliente de Google OAuth ni definir un usuario o contraseña en variables de entorno. El archivo `.env` del VPS necesita un `JWT_SECRET` aleatorio de al menos 32 caracteres, la conexión MariaDB y un `INITIAL_SETUP_TOKEN` aleatorio de un solo uso administrativo. Tras aplicar las migraciones, la primera visita muestra un formulario de **alta inicial**: crea allí el administrador, su contraseña y el token de instalación. Una vez creado el administrador, elimina `INITIAL_SETUP_TOKEN` del VPS y reinicia la aplicación. La contraseña se guarda en MariaDB como hash seguro y nunca se incluye en el repositorio, las copias JSON ni los activos del navegador.
+
+Si existe un propietario financiero histórico, el alta inicial vincula las credenciales persistentes a ese mismo registro de usuario. Sus cuentas, préstamos, movimientos y demás relaciones mantienen el mismo identificador y no se copian ni se eliminan.
 
 ## 4. Primera instalación por SSH
 
@@ -52,7 +54,7 @@ Después, ejecuta el script de primera instalación. Este usa el lockfile, aplic
 bash scripts/vps-install.sh
 ```
 
-En la extensión **Node.js** de Plesk, selecciona Node.js 23.11.1, establece `NODE_ENV=production`, define `Application startup file` como `dist/index.js`, confirma el directorio raíz de la aplicación y pulsa **Restart App**. Plesk proporciona el puerto mediante `PORT`; la aplicación lo utiliza automáticamente.
+En la extensión **Node.js** de Plesk, selecciona Node.js 23.11.1, establece `NODE_ENV=production`, define `Application startup file` como `dist/index.js`, confirma el directorio raíz de la aplicación y pulsa **Restart App**. Plesk proporciona el puerto mediante `PORT`; la aplicación lo utiliza automáticamente. No definas un `PORT` manual.
 
 ## 5. Configuración de actualizaciones con `git pull`
 
@@ -82,7 +84,8 @@ Para restaurar una copia funcional, usa primero el respaldo SQL completo. Para r
 Antes de considerar el despliegue terminado, comprueba lo siguiente:
 
 - `https://finanzas.blancoguzman.es` muestra el formulario de acceso local y usa HTTPS válido.
-- El usuario local autorizado accede correctamente y una contraseña incorrecta recibe un rechazo sin crear sesión.
+- La primera visita permite crear el administrador inicial y, después, ese usuario accede correctamente mientras una contraseña incorrecta recibe un rechazo sin crear sesión.
+- El administrador puede crear cuentas de acceso adicionales desde **Configuración**, sin exponer contraseñas en copias de seguridad.
 - Se puede crear un ingreso, un gasto de tarjeta, un recibo habitual, un préstamo, una financiación, una cuenta, una deuda y un tipo de cambio USD → EUR.
 - El resumen mensual diferencia el balance confirmado del balance con ingresos posibles.
 - Un préstamo o financiación terminado deja de aparecer en los meses posteriores a su vencimiento.

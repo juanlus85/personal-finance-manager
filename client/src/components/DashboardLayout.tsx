@@ -48,6 +48,9 @@ export default function DashboardLayout({
   const { loading, user } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [setupToken, setSetupToken] = useState("");
+  const [needsBootstrap, setNeedsBootstrap] = useState<boolean | null>(null);
   const [loginError, setLoginError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -57,11 +60,11 @@ export default function DashboardLayout({
     setIsLoggingIn(true);
 
     try {
-      const response = await fetch("/auth/local/login", {
+      const response = await fetch(needsBootstrap ? "/auth/local/bootstrap" : "/auth/local/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(needsBootstrap ? { username, password, displayName, setupToken } : { username, password }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -75,6 +78,10 @@ export default function DashboardLayout({
       setIsLoggingIn(false);
     }
   };
+
+  useEffect(() => {
+    void fetch("/auth/local/status").then(response => response.ok ? response.json() : null).then(payload => setNeedsBootstrap(Boolean(payload?.needsBootstrap))).catch(() => setNeedsBootstrap(false));
+  }, []);
 
   if (loading) {
     return <DashboardLayoutSkeleton />
@@ -92,21 +99,23 @@ export default function DashboardLayout({
               Finanzas personales
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm leading-6">
-              Accede a tu espacio financiero privado para consultar y actualizar tu situación mensual.
+              {needsBootstrap ? "Crea el primer acceso administrador para proteger este espacio financiero." : "Accede a tu espacio financiero privado para consultar y actualizar tu situación mensual."}
             </p>
           </div>
           <div className="w-full space-y-4">
+            {needsBootstrap ? <div className="space-y-2"><Label htmlFor="local-name">Nombre</Label><Input id="local-name" autoComplete="name" value={displayName} onChange={event => setDisplayName(event.target.value)} required disabled={isLoggingIn} /></div> : null}
             <div className="space-y-2">
               <Label htmlFor="local-username">Usuario</Label>
               <Input id="local-username" autoComplete="username" value={username} onChange={event => setUsername(event.target.value)} required disabled={isLoggingIn} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="local-password">Contraseña</Label>
-              <Input id="local-password" type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required disabled={isLoggingIn} />
+              <Input id="local-password" type="password" autoComplete={needsBootstrap ? "new-password" : "current-password"} minLength={needsBootstrap ? 10 : undefined} value={password} onChange={event => setPassword(event.target.value)} required disabled={isLoggingIn} />
             </div>
+            {needsBootstrap ? <div className="space-y-2"><Label htmlFor="setup-token">Token de instalación</Label><Input id="setup-token" type="password" autoComplete="off" value={setupToken} onChange={event => setSetupToken(event.target.value)} required disabled={isLoggingIn} /><p className="text-xs text-muted-foreground">Se configura temporalmente como `INITIAL_SETUP_TOKEN` en el servidor.</p></div> : null}
             {loginError ? <p role="alert" className="flex gap-2 items-start rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive"><CircleAlert className="h-4 w-4 shrink-0 mt-0.5" />{loginError}</p> : null}
             <Button type="submit" size="lg" className="w-full shadow-lg hover:shadow-xl transition-all" disabled={isLoggingIn}>
-              {isLoggingIn ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Entrando</> : "Entrar"}
+              {isLoggingIn ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{needsBootstrap ? "Creando acceso" : "Entrando"}</> : needsBootstrap ? "Crear acceso inicial" : "Entrar"}
             </Button>
           </div>
         </form>

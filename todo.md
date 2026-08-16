@@ -113,6 +113,16 @@
 - [x] Retirar el plugin de localización JSX incompatible con Vite 7 para eliminar su advertencia de peer dependency.
 - [x] Reejecutar `pnpm install --frozen-lockfile` tras documentar las advertencias no bloqueantes y registrar la validación de VPS.
 - [ ] Ejecutar `pnpm install --frozen-lockfile` y los scripts de instalación o actualización en el VPS real, registrando el resultado del despliegue.
+- [ ] Ejecutar y registrar en el VPS `bash scripts/vps-update.sh` con el `.env` ya creado, para validar el flujo idempotente de actualizaciones.
+- [x] Diagnosticar y corregir el inicio de sesión local rechazado tras el despliegue en el VPS.
+- [x] Sustituir el acceso local definido por variables de entorno por usuarios con contraseña segura persistidos en la base de datos.
+- [x] Crear una migración que preserve el propietario financiero existente y permita iniciar sesión con una cuenta administrada en base de datos.
+- [x] Incorporar una administración segura de usuarios y pruebas de autenticación con contraseñas almacenadas como hash.
+- [x] Proteger la creación del administrador inicial con un secreto de configuración temporal o una restricción equivalente.
+- [x] Añadir una prueba de regresión que pruebe la conservación del propietario financiero y sus relaciones durante el alta inicial persistente.
+- [x] Completar la administración de usuarios con cambio de contraseña y activación o desactivación segura de cuentas, cubierta por pruebas.
+- [x] Sincronizar con GitHub la versión actual de las proyecciones antes de continuar la instalación en el VPS.
+- [ ] Entregar una guía SSH paso a paso para instalar Lumen Finanzas en el VPS y enlazar `finanzas.blancoguzman.es`.
 - [x] Definir y calcular el saldo final confirmado desde la liquidez actual, ingresos pendientes y gastos pendientes.
 - [x] Definir y calcular el saldo final con posibles incluyendo ingresos y gastos marcados como inciertos.
 - [x] Mostrar ambas proyecciones con su desglose en Resumen mensual.

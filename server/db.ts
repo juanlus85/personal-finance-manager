@@ -1,7 +1,8 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, count, eq, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accounts, debts, financings, InsertUser, loans, monthlyConceptSettlements, recurringTransactions, transactions, users } from "../drizzle/schema";
+import { accounts, debts, financings, InsertUser, localCredentials, loans, monthlyConceptSettlements, recurringTransactions, transactions, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { hashLocalPassword, normalizeLocalUsername, verifyLocalPassword } from "./auth/localPasswords";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -165,6 +166,115 @@ export async function ensureLocalFinanceOwner(openId: string, displayName: strin
     return;
   }
   await ensureLocalFinanceOwnerWithDb(db, openId, displayName);
+}
+
+export async function getLocalAccessStatus() {
+  const db = await getDb();
+  if (!db) return { databaseAvailable: false, needsBootstrap: false };
+  const [credential] = await db.select({ id: localCredentials.id }).from(localCredentials).limit(1);
+  return { databaseAvailable: true, needsBootstrap: !credential };
+}
+
+export async function authenticateLocalAccess(username: string, password: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const normalizedUsername = normalizeLocalUsername(username);
+  const [record] = await db
+    .select({ credential: localCredentials, user: users })
+    .from(localCredentials)
+    .innerJoin(users, eq(localCredentials.userId, users.id))
+    .where(and(eq(localCredentials.username, normalizedUsername), eq(localCredentials.isActive, true)))
+    .limit(1);
+  if (!record || !(await verifyLocalPassword(password, record.credential.passwordHash))) return undefined;
+  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, record.user.id));
+  return record.user;
+}
+
+export async function bootstrapLocalAccessWithDb(db: FinanceDatabase, input: { username: string; password: string; displayName: string }) {
+  const normalizedUsername = normalizeLocalUsername(input.username);
+  const [existingCredential] = await db.select({ id: localCredentials.id }).from(localCredentials).limit(1);
+  if (existingCredential) throw new Error("BOOTSTRAP_ALREADY_COMPLETED");
+
+  const openId = `local:${normalizedUsername}`;
+  await ensureLocalFinanceOwnerWithDb(db, openId, input.displayName);
+  const [owner] = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  if (!owner) throw new Error("LOCAL_OWNER_NOT_CREATED");
+
+  const passwordHash = await hashLocalPassword(input.password);
+  await db.transaction(async tx => {
+    const [credentialCreatedByAnotherRequest] = await tx.select({ id: localCredentials.id }).from(localCredentials).limit(1);
+    if (credentialCreatedByAnotherRequest) throw new Error("BOOTSTRAP_ALREADY_COMPLETED");
+    await tx.update(users).set({ name: input.displayName, loginMethod: "database", role: "admin", lastSignedIn: new Date() }).where(eq(users.id, owner.id));
+    await tx.insert(localCredentials).values({ userId: owner.id, username: normalizedUsername, passwordHash });
+  });
+  return { ...owner, name: input.displayName, role: "admin" as const };
+}
+
+export async function bootstrapLocalAccess(input: { username: string; password: string; displayName: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  return bootstrapLocalAccessWithDb(db, input);
+}
+
+export async function listLocalAccessUsers() {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  return db
+    .select({ id: users.id, name: users.name, role: users.role, username: localCredentials.username, isActive: localCredentials.isActive, lastSignedIn: users.lastSignedIn, createdAt: localCredentials.createdAt })
+    .from(localCredentials)
+    .innerJoin(users, eq(localCredentials.userId, users.id));
+}
+
+export async function createLocalAccessUser(input: { username: string; password: string; displayName: string; role: "user" | "admin" }) {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const normalizedUsername = normalizeLocalUsername(input.username);
+  const [existing] = await db.select({ id: localCredentials.id }).from(localCredentials).where(eq(localCredentials.username, normalizedUsername)).limit(1);
+  if (existing) throw new Error("USERNAME_ALREADY_EXISTS");
+  const passwordHash = await hashLocalPassword(input.password);
+  const openId = `local:${normalizedUsername}`;
+  const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.openId, openId)).limit(1);
+  if (existingUser) throw new Error("USERNAME_ALREADY_EXISTS");
+  const result = await db.transaction(async tx => {
+    const inserted = await tx.insert(users).values({ openId, name: input.displayName, email: null, loginMethod: "database", role: input.role, lastSignedIn: new Date() });
+    const userId = Number(inserted[0].insertId);
+    await tx.insert(localCredentials).values({ userId, username: normalizedUsername, passwordHash });
+    return { id: userId, name: input.displayName, role: input.role, username: normalizedUsername, isActive: true };
+  });
+  return result;
+}
+
+export function localAccessUpdateBlockReason(input: { actorUserId: number; targetUserId: number; targetRole: "user" | "admin"; requestedIsActive?: boolean; activeAdminCount: number }) {
+  if (input.requestedIsActive !== false) return undefined;
+  if (input.actorUserId === input.targetUserId) return "CANNOT_DISABLE_CURRENT_ADMIN";
+  if (input.targetRole === "admin" && input.activeAdminCount <= 1) return "LAST_ADMIN_MUST_REMAIN_ACTIVE";
+  return undefined;
+}
+
+export async function updateLocalAccessUser(actorUserId: number, input: { userId: number; password?: string; isActive?: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const [target] = await db
+    .select({ credential: localCredentials, user: users })
+    .from(localCredentials)
+    .innerJoin(users, eq(localCredentials.userId, users.id))
+    .where(eq(users.id, input.userId))
+    .limit(1);
+  if (!target) throw new Error("USER_NOT_FOUND");
+  if (input.isActive === false) {
+    const accessUsers = await listLocalAccessUsers();
+    const activeAdmins = accessUsers.filter(accessUser => accessUser.role === "admin" && accessUser.isActive);
+    const blockReason = localAccessUpdateBlockReason({ actorUserId, targetUserId: target.user.id, targetRole: target.user.role, requestedIsActive: input.isActive, activeAdminCount: activeAdmins.length });
+    if (blockReason) throw new Error(blockReason);
+  }
+
+  const credentialUpdate: Record<string, unknown> = {};
+  if (input.password) credentialUpdate.passwordHash = await hashLocalPassword(input.password);
+  if (input.isActive !== undefined) credentialUpdate.isActive = input.isActive;
+  if (Object.keys(credentialUpdate).length) {
+    await db.update(localCredentials).set(credentialUpdate).where(eq(localCredentials.userId, input.userId));
+  }
+  return { id: target.user.id, username: target.credential.username, isActive: input.isActive ?? target.credential.isActive };
 }
 
 // TODO: add feature queries here as your schema grows.
