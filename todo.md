@@ -121,6 +121,8 @@
 - [x] Proteger la creación del administrador inicial con un secreto de configuración temporal o una restricción equivalente.
 - [x] Añadir una prueba de regresión que pruebe la conservación del propietario financiero y sus relaciones durante el alta inicial persistente.
 - [x] Completar la administración de usuarios con cambio de contraseña y activación o desactivación segura de cuentas, cubierta por pruebas.
+- [x] Preservar también el propietario financiero creado por el acceso local anterior al ejecutar el alta inicial persistente.
+- [x] Añadir una prueba completa de alta inicial persistente para un propietario local histórico sin correo y con relaciones financieras.
 - [x] Sincronizar con GitHub la versión actual de las proyecciones antes de continuar la instalación en el VPS.
 - [ ] Entregar una guía SSH paso a paso para instalar Lumen Finanzas en el VPS y enlazar `finanzas.blancoguzman.es`.
 - [x] Definir y calcular el saldo final confirmado desde la liquidez actual, ingresos pendientes y gastos pendientes.

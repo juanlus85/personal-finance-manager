@@ -116,16 +116,22 @@ export function shouldClaimLegacyFinanceOwner(currentLocalId: number | undefined
  */
 export async function ensureLocalFinanceOwnerWithDb(db: FinanceDatabase, openId: string, displayName: string): Promise<void> {
   const currentLocal = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-  const legacyOwner = await db
-    .select()
-    .from(users)
-    .where(and(eq(users.email, ENV.allowedEmail), ne(users.openId, openId)))
-    .limit(1);
-  const candidate = legacyOwner[0];
-
   const localHasFinancialData = currentLocal[0] ? await hasFinancialData(db, currentLocal[0].id) : false;
-  const legacyHasFinancialData = candidate ? await hasFinancialData(db, candidate.id) : false;
-  if (shouldClaimLegacyFinanceOwner(currentLocal[0]?.id, candidate?.id, localHasFinancialData, legacyHasFinancialData)) {
+  const historicOwners = await db.select().from(users).where(ne(users.openId, openId));
+  const orderedHistoricOwners = [...historicOwners].sort((left, right) => {
+    const leftIsExpectedLegacyOwner = left.email === ENV.allowedEmail ? 0 : 1;
+    const rightIsExpectedLegacyOwner = right.email === ENV.allowedEmail ? 0 : 1;
+    return leftIsExpectedLegacyOwner - rightIsExpectedLegacyOwner;
+  });
+  let candidate: typeof historicOwners[number] | undefined;
+  for (const historicOwner of orderedHistoricOwners) {
+    if (await hasFinancialData(db, historicOwner.id)) {
+      candidate = historicOwner;
+      break;
+    }
+  }
+  const legacyHasFinancialData = Boolean(candidate);
+  if (candidate && shouldClaimLegacyFinanceOwner(currentLocal[0]?.id, candidate.id, localHasFinancialData, legacyHasFinancialData)) {
     await db.transaction(async tx => {
       const temporaryLocal = currentLocal[0];
       if (temporaryLocal) {

@@ -24,8 +24,8 @@ describe("local finance owner migration", () => {
     const updates: Array<Record<string, unknown>> = [];
     const results = [
       [{ id: 90, openId: "local:juanlu" }],
-      [{ id: 7, openId: "google:historic", email: "juanlu85@gmail.com" }],
       [], [], [], [], [], [], [],
+      [{ id: 7, openId: "google:historic", email: "juanlu85@gmail.com" }],
       [{ id: 1 }], [], [], [], [], [], [],
     ];
     let position = 0;
@@ -41,6 +41,26 @@ describe("local finance owner migration", () => {
     expect(updates).toHaveLength(2);
     expect(updates[0]).toMatchObject({ loginMethod: "retired-local" });
     expect(updates[1]).toMatchObject({ openId: "local:juanlu", loginMethod: "local", name: "Juanlu" });
+  });
+
+  it("also claims data that belongs to a previous local identity without an email address", async () => {
+    const updates: Array<Record<string, unknown>> = [];
+    const results = [
+      [],
+      [{ id: 12, openId: "local:admin", email: null }],
+      [{ id: 1 }], [], [], [], [], [], [],
+    ];
+    let position = 0;
+    const database = {
+      select: () => createChain(results[position++] ?? []),
+      update: () => ({ set: (values: Record<string, unknown>) => { updates.push(values); return { where: () => Promise.resolve() }; } }),
+      insert: () => ({ values: () => Promise.resolve() }),
+      transaction: async (callback: (tx: unknown) => Promise<void>) => callback(database),
+    };
+
+    await ensureLocalFinanceOwnerWithDb(database as never, "local:juanlu", "Juanlu");
+
+    expect(updates).toEqual(expect.arrayContaining([expect.objectContaining({ openId: "local:juanlu", loginMethod: "local" })]));
   });
 
   it("creates the first persistent credential on the historic financial owner without changing its user id", async () => {
@@ -68,6 +88,33 @@ describe("local finance owner migration", () => {
     expect(result).toMatchObject({ id: 7, role: "admin" });
     expect(updates).toEqual(expect.arrayContaining([expect.objectContaining({ openId: "local:juanlu" }), expect.objectContaining({ role: "admin", loginMethod: "database" })]));
     expect(inserts).toEqual(expect.arrayContaining([expect.objectContaining({ userId: 7, username: "juanlu", passwordHash: expect.stringMatching(/^scrypt\$/) })]));
+  });
+
+  it("binds the initial persistent credential to a prior local owner with financial relations and no email", async () => {
+    const updates: Array<Record<string, unknown>> = [];
+    const inserts: Array<Record<string, unknown>> = [];
+    const historicLocalOwner = { id: 12, openId: "local:admin", email: null, name: "Administrador", role: "user" };
+    const results = [
+      [],
+      [],
+      [historicLocalOwner],
+      [{ id: 99 }], [], [], [], [], [], [],
+      [{ ...historicLocalOwner, openId: "local:juanlu" }],
+      [],
+    ];
+    let position = 0;
+    const database = {
+      select: () => createChain(results[position++] ?? []),
+      update: () => ({ set: (values: Record<string, unknown>) => { updates.push(values); return { where: () => Promise.resolve() }; } }),
+      insert: () => ({ values: (values: Record<string, unknown>) => { inserts.push(values); return Promise.resolve(); } }),
+      transaction: async (callback: (tx: unknown) => Promise<void>) => callback(database),
+    };
+
+    const result = await bootstrapLocalAccessWithDb(database as never, { username: "Juanlu", password: "una-clave-segura", displayName: "Juanlu" });
+
+    expect(result).toMatchObject({ id: 12, role: "admin" });
+    expect(updates).toEqual(expect.arrayContaining([expect.objectContaining({ openId: "local:juanlu" }), expect.objectContaining({ role: "admin", loginMethod: "database" })]));
+    expect(inserts).toEqual(expect.arrayContaining([expect.objectContaining({ userId: 12, username: "juanlu", passwordHash: expect.stringMatching(/^scrypt\$/) })]));
   });
 
   it("does not allow the current or final active administrator to be disabled", () => {
